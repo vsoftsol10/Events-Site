@@ -49,9 +49,6 @@ const sendRegistrationEmail = async ({ to, name, registrationId, eventName, even
       <p><strong>Venue Details:</strong> ${eventVenue || ""}</p>
       <p><strong>Registration Fee:</strong> ${registrationFee || ""}</p>
       <p><strong>Phone:</strong> ${phone || ""}</p>
-      <div style="margin: 16px 0;">
-        <img src="cid:posterImage" alt="Event Poster" style="max-width: 100%; border-radius: 8px;" />
-      </div>
       <p>Please arrive 15 minutes before the session.</p>
       <p>Kindly carry this email or your Registration ID during check-in.</p>
       <p>We look forward to welcoming you.</p>
