@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import logo from "../assets/logo1.png";
+import logo from "../assets/logo.png";
 import leaf from "../assets/leaves.png";
 import border from "../assets/bg.jpg";
 import { useNavigate } from "react-router-dom";
@@ -90,24 +90,12 @@ function Nav({ showBackButton = false }) {
 
           <button onClick={() => handleNavClick("#hero")} className="flex flex-col items-start min-w-0">
             <div className="flex items-center gap-0">
-              <img src={logo} alt="VsoftSolutions logo" className="w-6 h-8 sm:w-7 sm:h-10 md:w-9 md:h-12 object-contain mix-blend-multiply" />
-              <div className="relative">
-                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold leading-none tracking-tight">
-                  <span className="text-[#1F2937]">eda</span>
-                  <span className="text-[#245C1F] font-normal">crafts.</span>
-                </h1>
-                <img
-                  src={leaf}
-                  alt=""
-                  aria-hidden="true"
-                  className="absolute -top-3 md:-top-4 left-7 md:left-9 w-6 h-6 md:w-8 md:h-8 object-contain mix-blend-multiply"
-                />
-              </div>
+              <img
+                src={logo}
+                alt="VsoftSolutions logo"
+                className="w-20 h-20 sm:w-16 sm:h-16 md:w-35 md:h-22 object-contain mix-blend-multiply   p-1 "
+              />
             </div>
-            <p className="hidden sm:block text-[11px] md:text-xs font-semibold tracking-wide text-[#5C4033] ml-2 md:ml-2.5 mt-0.5">
-              Connect <span className="text-[#D89A07]">•</span> Collaborate{" "}
-              <span className="text-[#D89A07]">•</span> Grow
-            </p>
           </button>
         </div>
 
@@ -156,7 +144,7 @@ function Nav({ showBackButton = false }) {
           <motion.button
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
-            onClick={() => handleNavClick("#cta")}
+            onClick={() => navigate("/register")}
             className="hidden sm:inline-flex items-center gap-1.5 bg-[#245C1F] text-white text-sm font-semibold px-5 py-2.5 rounded-full shadow-sm hover:bg-[#1c4818] transition-colors"
           >
             Register
@@ -216,7 +204,7 @@ function Nav({ showBackButton = false }) {
 
               <motion.button
                 whileTap={{ scale: 0.97 }}
-                onClick={() => handleNavClick("#cta")}
+                onClick={() => navigate("/register")}
                 className="mt-3 w-full bg-[#245C1F] text-white text-sm font-semibold py-3 rounded-full shadow-sm"
               >
                 Register Now

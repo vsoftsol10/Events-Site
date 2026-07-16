@@ -1,3 +1,4 @@
+const path = require("path");
 const nodemailer = require("nodemailer");
 
 const mailConfig = {
@@ -8,6 +9,7 @@ const mailConfig = {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
+  family: 4,
 };
 
 const transporter = mailConfig.auth.user && mailConfig.auth.pass
@@ -44,15 +46,25 @@ const sendRegistrationEmail = async ({ to, name, registrationId, eventName, even
       <p><strong>Event:</strong> ${eventName || ""}</p>
       <p><strong>Date:</strong> ${eventDate || ""}</p>
       <p><strong>Time:</strong> ${eventTime || ""}</p>
-      <p><strong>Venue:</strong> ${eventVenue || ""}</p>
+      <p><strong>Venue Details:</strong> ${eventVenue || ""}</p>
       <p><strong>Registration Fee:</strong> ${registrationFee || ""}</p>
       <p><strong>Phone:</strong> ${phone || ""}</p>
+      <div style="margin: 16px 0;">
+        <img src="cid:posterImage" alt="Event Poster" style="max-width: 100%; border-radius: 8px;" />
+      </div>
       <p>Please arrive 15 minutes before the session.</p>
       <p>Kindly carry this email or your Registration ID during check-in.</p>
       <p>We look forward to welcoming you.</p>
       <p>Regards,<br/>Vsoft Solutions</p>
     `,
-    text: `Dear ${name || "Participant"},\n\nThank you for registering for the Tirunelveli Business Digital Summit 2026.\nYour registration has been confirmed successfully.\n\nRegistration ID: ${registrationId || ""}\nEvent: ${eventName || ""}\nDate: ${eventDate || ""}\nTime: ${eventTime || ""}\nVenue: ${eventVenue || ""}\nRegistration Fee: ${registrationFee || ""}\nPhone: ${phone || ""}\n\nPlease arrive 15 minutes before the session.\nKindly carry this email or your Registration ID during check-in.\n\nRegards,\nVsoft Solutions`,
+    text: `Dear ${name || "Participant"},\n\nThank you for registering for the Tirunelveli Business Digital Summit 2026.\nYour registration has been confirmed successfully.\n\nRegistration ID: ${registrationId || ""}\nEvent: ${eventName || ""}\nDate: ${eventDate || ""}\nTime: ${eventTime || ""}\nVenue Details: ${eventVenue || ""}\nRegistration Fee: ${registrationFee || ""}\nPhone: ${phone || ""}\n\nPlease arrive 15 minutes before the session.\nKindly carry this email or your Registration ID during check-in.\n\nRegards,\nVsoft Solutions`,
+    attachments: [
+      {
+        filename: "poster.png",
+        path: path.resolve(__dirname, "../../frontend/src/assets/poster.png"),
+        cid: "posterImage",
+      },
+    ],
   };
 
   return transporterInstance.sendMail(mailOptions);
