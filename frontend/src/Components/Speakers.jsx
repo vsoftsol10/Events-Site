@@ -312,7 +312,7 @@ function Speakers() {
   return (
     <section
       id="speakers"
-      className="relative py-16 md:py-28 px-4 md:px-6 overflow-hidden bg-[#FCFBF8]"
+      className="relative py-16 md:py-28 px-3 sm:px-4 md:px-6 overflow-hidden bg-[#FCFBF8]"
       style={{
         fontFamily: "'Inter', sans-serif",
       }}

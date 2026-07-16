@@ -59,7 +59,7 @@ function Nav({ showBackButton = false }) {
       initial={{ y: -80, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.6, ease: "easeOut" }}
-      className="fixed top-0 left-0 w-full z-50"
+      className="fixed top-0 left-0 w-full z-50 overflow-x-hidden"
     >
       {/* Kraft-paper texture, always present */}
       <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${border})` }} />
@@ -70,7 +70,7 @@ function Nav({ showBackButton = false }) {
       />
 
       <div
-        className={`relative flex items-center justify-between px-4 md:px-8 transition-all duration-500 ${
+        className={`relative flex items-center justify-between px-3 sm:px-4 md:px-8 transition-all duration-500 ${
           scrolled ? "py-2 md:py-3" : "py-4 md:py-6"
         }`}
       >
@@ -88,11 +88,11 @@ function Nav({ showBackButton = false }) {
             </button>
           )}
 
-          <button onClick={() => handleNavClick("#hero")} className="flex flex-col items-start">
+          <button onClick={() => handleNavClick("#hero")} className="flex flex-col items-start min-w-0">
             <div className="flex items-center gap-0">
-              <img src={logo} alt="VsoftSolutions logo" className="w-7 h-10 md:w-9 md:h-12 object-contain mix-blend-multiply" />
+              <img src={logo} alt="VsoftSolutions logo" className="w-6 h-8 sm:w-7 sm:h-10 md:w-9 md:h-12 object-contain mix-blend-multiply" />
               <div className="relative">
-                <h1 className="text-2xl md:text-3xl font-bold leading-none tracking-tight">
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold leading-none tracking-tight">
                   <span className="text-[#1F2937]">eda</span>
                   <span className="text-[#245C1F] font-normal">crafts.</span>
                 </h1>

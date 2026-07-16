@@ -19,16 +19,16 @@ const { Resend } = require("resend");
 
 let otpStore = {};
 
-const resendApiKey = process.env.RESEND_API_KEY || process.env.BREVO_API_KEY;
-let resend;
+// const resendApiKey = process.env.RESEND_API_KEY || process.env.BREVO_API_KEY;
+// let resend;
 
-if (resendApiKey) {
-  resend = new Resend(resendApiKey);
-} else {
-  console.warn(
-    "Warning: Missing Resend API key. Set RESEND_API_KEY in backend/.env or provide BREVO_API_KEY as fallback. Email features will be disabled."
-  );
-}
+// if (resendApiKey) {
+//   resend = new Resend(resendApiKey);
+// } else {
+//   console.warn(
+//     "Warning: Missing Resend API key. Set RESEND_API_KEY in backend/.env or provide BREVO_API_KEY as fallback. Email features will be disabled."
+//   );
+// }
 // ──────────────────────────────────────────────────────────────────────────────
 
 const app = express();
@@ -561,8 +561,11 @@ app.get("/events", async (req, res) => {
 
     res.json(rows);
   } catch (err) {
-    console.log(err);
-    res.status(500).send("Error fetching events");
+    console.error("GET /events failed:", err.message || err);
+    if (cachedEvents) {
+      return res.json(cachedEvents);
+    }
+    res.json([]);
   }
 });
 

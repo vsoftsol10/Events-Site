@@ -25,7 +25,7 @@ function Footer() {
         <div className="absolute inset-0 bg-gradient-to-b from-[#0F2E1C]/85 via-[#0F2E1C]/80 to-[#0a1f13]/90" />
         <div className="pointer-events-none absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-[#E8C468]/70 to-transparent" />
 
-        <div className="relative max-w-6xl mx-auto px-4 md:px-8 py-8 md:py-10">
+        <div className="relative max-w-6xl mx-auto px-3 sm:px-4 md:px-8 py-8 md:py-10">
           <motion.div
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}

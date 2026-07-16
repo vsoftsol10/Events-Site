@@ -3,11 +3,20 @@ const { google } = require("googleapis");
 const fs = require("fs");
 const path = require("path");
 
+const normalizePrivateKey = (value) =>
+  (value || "")
+    .replace(/\\r/g, "")
+    .replace(/\\n/g, "\n")
+    .trim();
+
 const googleCredentials = (() => {
-  if (process.env.GOOGLE_CLIENT_EMAIL && process.env.GOOGLE_PRIVATE_KEY) {
+  const envClientEmail = process.env.GOOGLE_CLIENT_EMAIL;
+  const envPrivateKey = normalizePrivateKey(process.env.GOOGLE_PRIVATE_KEY);
+
+  if (envClientEmail && envPrivateKey) {
     return {
-      client_email: process.env.GOOGLE_CLIENT_EMAIL,
-      private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+      client_email: envClientEmail,
+      private_key: envPrivateKey,
     };
   }
 
@@ -15,8 +24,8 @@ const googleCredentials = (() => {
   if (fs.existsSync(credentialPath)) {
     const credentials = require(credentialPath);
     return {
-      client_email: credentials.client_email,
-      private_key: credentials.private_key,
+      client_email: credentials.client_email || envClientEmail,
+      private_key: normalizePrivateKey(credentials.private_key || envPrivateKey),
     };
   }
 

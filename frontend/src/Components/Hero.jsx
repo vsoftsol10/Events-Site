@@ -185,13 +185,13 @@ function Hero() {
         variants={stagger}
         initial="hidden"
         animate="show"
-        className="relative max-w-7xl mx-auto px-4 md:px-8"
+        className="relative max-w-7xl mx-auto px-3 sm:px-4 md:px-8"
       >
         {/* ---------- split: left text column / right visual column ---------- */}
         <div className="flex flex-col md:flex-row items-center md:items-start gap-14 md:gap-10">
 
           {/* ===================== LEFT COLUMN ===================== */}
-          <div className="w-full md:w-[52%] text-center md:text-left">
+          <div className="w-full md:w-[52%] text-center md:text-left max-w-2xl mx-auto md:max-w-none">
             {/* eyebrow + badge */}
             <motion.p
               variants={fadeLeft}
@@ -245,7 +245,7 @@ function Hero() {
             {/* CTAs */}
             <motion.div
               variants={fadeLeft}
-              className="mt-9 flex flex-col sm:flex-row items-center md:items-start justify-center md:justify-start gap-4"
+              className="mt-9 flex flex-col sm:flex-row items-center md:items-start justify-center md:justify-start gap-4 w-full"
             >
               <motion.button
                 whileHover={{ scale: closed ? 1 : 1.04 }}
@@ -255,7 +255,7 @@ function Hero() {
                   navigate("/register");
                 }}
                 disabled={closed}
-                className={`px-8 py-4 rounded-full font-semibold text-sm md:text-base shadow-lg transition-all ${
+                className={`w-full sm:w-auto px-8 py-4 rounded-full font-semibold text-sm md:text-base shadow-lg transition-all ${
                   closed
                     ? "bg-red-700 text-white cursor-not-allowed"
                     : "text-white cursor-pointer"
@@ -279,7 +279,7 @@ function Hero() {
                 onClick={() =>
                   document.getElementById("glimpses")?.scrollIntoView({ behavior: "smooth" })
                 }
-                className="px-8 py-4 rounded-full text-sm md:text-base font-semibold text-[#132A1B] bg-white/70 backdrop-blur-md ring-1 ring-[#132A1B]/15 hover:bg-white transition-colors cursor-pointer"
+                className="w-full sm:w-auto px-8 py-4 rounded-full text-sm md:text-base font-semibold text-[#132A1B] bg-white/70 backdrop-blur-md ring-1 ring-[#132A1B]/15 hover:bg-white transition-colors cursor-pointer"
                 style={{ fontFamily: "'Manrope', sans-serif" }}
               >
                 {isTa ? "நிகழ்ச்சி நிரல்" : "View Agenda"}
@@ -291,7 +291,7 @@ function Hero() {
               variants={fadeLeft}
               className="mt-12 max-w-lg mx-auto md:mx-0 rounded-2xl border border-[#132A1B]/12 overflow-hidden bg-white"
             >
-              <div className="grid grid-cols-3 divide-x divide-[#132A1B]/12">
+              <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-[#132A1B]/12">
                 {quickInfo.map((item) => (
                   <div key={item.label} className="px-3 py-4 sm:px-4 text-left">
                     <p className="flex items-center gap-1.5 text-[#245C1F] text-[10px] uppercase tracking-[0.14em] font-bold">

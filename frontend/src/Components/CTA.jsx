@@ -43,7 +43,7 @@ function CTA() {
   const closed = isRegistrationClosed();
 
   return (
-    <section className="bg-[#FCFBF8] px-4 md:px-6 py-8 md:py-12">
+    <section className="bg-[#FCFBF8] px-3 sm:px-4 md:px-6 py-8 md:py-12">
       <motion.div
         initial={{ opacity: 0, y: 24 }}
         whileInView={{ opacity: 1, y: 0 }}
@@ -68,7 +68,7 @@ function CTA() {
         <div className="pointer-events-none absolute -top-10 -right-8 w-40 h-40 rounded-full bg-[#E8C468]/10 blur-3xl" />
 
         {/* CONTENT */}
-        <div className="relative py-8 md:py-12 px-6 md:px-9 text-center">
+        <div className="relative py-8 md:py-12 px-4 sm:px-6 md:px-9 text-center">
 
           {/* SEATS BADGE */}
           <motion.div
@@ -117,7 +117,7 @@ function CTA() {
             whileHover={!closed ? { scale: 1.04 } : {}}
             whileTap={!closed ? { scale: 0.97 } : {}}
             style={{ fontFamily: "'Manrope', sans-serif" }}
-            className={`mt-5 md:mt-6 font-semibold px-6 md:px-8 py-2 md:py-2.5 rounded-full text-xs md:text-sm tracking-wide transition-shadow ${
+            className={`mt-5 md:mt-6 font-semibold w-full sm:w-auto px-6 md:px-8 py-2 md:py-2.5 rounded-full text-xs md:text-sm tracking-wide transition-shadow ${
               closed
                 ? "bg-[#7a1f1f]/70 text-[#F6F2E6]/80 cursor-not-allowed"
                 : "bg-gradient-to-r from-[#E8C468] to-[#C9A227] text-[#0F2E1C] cursor-pointer shadow-md shadow-black/25 hover:shadow-lg hover:shadow-[#C9A227]/30"

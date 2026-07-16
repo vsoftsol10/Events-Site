@@ -1,2 +1,2 @@
 export const API_URL =
-  "http://localhost:5000";
+  "https://events-site-ov46.onrender.com";

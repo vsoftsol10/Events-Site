@@ -1,1 +1,3 @@
 "backend/credientials.json" 
+.env
+credentials.json
