@@ -12,12 +12,18 @@ const { sheets, spreadsheetId } = require("./config/googleSheets");
 const multer = require("multer");
 const streamifier = require("streamifier");
 const cloudinary = require("./config/cloudinary");
-const { sendRegistrationEmail } = require("./config/mail");
+const {
+  sendRegistrationEmail,
+  sendPaymentVerifiedEmail,
+  sendPaymentRejectedEmail,
+} = require("./config/mail");
 
 // ─── MAKE SURE THIS EXACT BLOCK IS HERE ──────────────────────────────────────
 const { Resend } = require("resend");
 
 let otpStore = {};
+const resendApiKey = process.env.RESEND_API_KEY;
+const resend = resendApiKey ? new Resend(resendApiKey) : null;
 
 // const resendApiKey = process.env.RESEND_API_KEY || process.env.BREVO_API_KEY;
 // let resend;
@@ -38,20 +44,82 @@ app.use(express.json());
 
 const upload = multer({ storage: multer.memoryStorage() });
 
+const REGISTRATION_RANGE = "Registrations!A:W";
+const REGISTRATION_WRITE_COLUMNS = 23;
+const PAYMENT_STATUS = {
+  pending: "Pending Verification",
+  verified: "Verified",
+  rejected: "Rejected",
+};
+
 const paymentUpload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowed = ["image/jpeg", "image/jpg", "image/png"];
-    if (allowed.includes(file.mimetype)) return cb(null, true);
-    return cb(new Error("Image must be a JPG or PNG file"));
+    const hasAllowedExtension = /\.(jpe?g|png)$/i.test(file.originalname || "");
+    if (allowed.includes(file.mimetype) && hasAllowedExtension) return cb(null, true);
+    return cb(new Error("Payment screenshot must be JPG, JPEG, or PNG"));
   },
 });
 
 let cachedEvents = null;
 let lastFetchTime = 0;
 
-const PAYMENT_SETTINGS_RANGE = "PaymentSettings!A:E";
+const PAYMENT_SETTINGS_RANGE = "PaymentSettings!A:D";
+
+const normalizeLoose = (value = "") =>
+  String(value).trim().toLowerCase().replace(/\s+/g, " ");
+
+const normalizeCompact = (value = "") =>
+  String(value).trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+
+const validateUpiReference = (value = "") => {
+  const reference = String(value || "").trim();
+  if (!reference) return "UPI Reference Number is required";
+  if (reference.length < 10) return "UPI Reference Number is too short";
+  if (reference.length > 30) return "UPI Reference Number is too long";
+  if (!/^[A-Za-z0-9]+$/.test(reference)) {
+    return "UPI Reference Number contains invalid characters";
+  }
+  return "";
+};
+
+const getAllRegistrationRows = async () => {
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: REGISTRATION_RANGE,
+  });
+  return response.data.values || [];
+};
+
+const assertUniquePaymentAndRegistration = (rows, { eventId, phone, email, upiReference }) => {
+  const dataRows = rows.slice(1);
+  const enteredReference = normalizeCompact(upiReference);
+  const enteredPhone = normalizeCompact(phone);
+  const enteredEmail = normalizeLoose(email);
+  const currentEvent = normalizeLoose(eventId);
+
+  const duplicateUpi = dataRows.some((row) => normalizeCompact(row[15]) === enteredReference);
+  if (duplicateUpi) {
+    const err = new Error("This UPI Reference Number has already been used. Please verify your payment details.");
+    err.statusCode = 409;
+    throw err;
+  }
+
+  const duplicateRegistration = dataRows.some((row) => {
+    const sameEvent = normalizeLoose(row[0]) === currentEvent;
+    const samePhone = enteredPhone && normalizeCompact(row[3]) === enteredPhone;
+    const sameEmail = enteredEmail && normalizeLoose(row[4]) === enteredEmail;
+    return sameEvent && (samePhone || sameEmail);
+  });
+
+  if (duplicateRegistration) {
+    const err = new Error("You have already registered for this event.");
+    err.statusCode = 409;
+    throw err;
+  }
+};
 
 const buildUpiPaymentQrCodeUrl = ({ upiId, merchantName, registrationFee }) => {
   if (!upiId || !merchantName || !registrationFee) return "";
@@ -81,10 +149,10 @@ const ensurePaymentSettingsSheet = async () => {
 
     await sheets.spreadsheets.values.update({
       spreadsheetId,
-      range: "PaymentSettings!A1:E1",
+      range: "PaymentSettings!A1:D1",
       valueInputOption: "RAW",
       requestBody: {
-        values: [["Event ID", "UPI ID", "QR Code Image", "Merchant Name", "Registration Fee"]],
+        values: [["Event ID", "UPI ID", "QR Code Image", "Merchant Name"]],
       },
     });
   }
@@ -103,16 +171,23 @@ const getPaymentSettings = async (eventId = "DEFAULT") => {
     rows.find((item) => (item[0] || "").trim() === "DEFAULT") ||
     [];
 
+  let eventFee = "";
+  try {
+    const eventResponse = await getEventRowById(normalizedEventId);
+    eventFee = eventResponse.row?.[18] || "";
+  } catch (_) {
+    eventFee = "";
+  }
+
   return {
     eventId: row[0] || normalizedEventId,
     upiId: row[1] || "",
     qrCodeImage: buildUpiPaymentQrCodeUrl({
       upiId: row[1] || "",
       merchantName: row[3] || "",
-      registrationFee: row[4] || "0",
+      registrationFee: eventFee || "0",
     }) || row[2] || "",
     merchantName: row[3] || "",
-    registrationFee: row[4] || "0",
   };
 };
 
@@ -126,11 +201,7 @@ const uploadBufferToCloudinary = (file, folder) =>
   });
 
 const generateRegistrationId = async () => {
-  const response = await sheets.spreadsheets.values.get({
-    spreadsheetId,
-    range: "Registrations!A:U",
-  });
-  const rows = response.data.values || [];
+  const rows = await getAllRegistrationRows();
   const existingIds = rows
     .slice(1)
     .map((row) => row[14])
@@ -142,7 +213,7 @@ const generateRegistrationId = async () => {
 const getEventRowById = async (eventId) => {
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,
-    range: "Events!A:Q",
+    range: "Events!A:S",
   });
   const rows = response.data.values || [];
   const rowIndex = rows.findIndex((row) => (row[0] || "").trim() === (eventId || "").trim());
@@ -152,6 +223,62 @@ const getEventRowById = async (eventId) => {
     throw err;
   }
   return { rows, row: rows[rowIndex], rowIndex, sheetRow: rowIndex + 1 };
+};
+
+const getSheetIdByTitle = async (title) => {
+  const response = await sheets.spreadsheets.get({ spreadsheetId });
+  const sheet = response.data.sheets.find(
+    (item) => item.properties.title === title
+  );
+  if (!sheet) {
+    const err = new Error(`${title} sheet not found`);
+    err.statusCode = 404;
+    throw err;
+  }
+  return sheet.properties.sheetId;
+};
+
+const getRegistrationsForEvent = async (eventId) => {
+  const rows = await getAllRegistrationRows();
+  return rows
+    .slice(1)
+    .filter((row) => (row[0] || "").trim() === (eventId || "").trim());
+};
+
+const deleteRowsByFirstColumn = async (sheetTitle, range, value) => {
+  try {
+    const response = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range,
+    });
+    const rows = response.data.values || [];
+    const sheetId = await getSheetIdByTitle(sheetTitle);
+    const rowIndexes = rows
+      .map((row, index) => ({ row, index }))
+      .filter(({ row }) => (row[0] || "").trim() === (value || "").trim())
+      .map(({ index }) => index)
+      .sort((a, b) => b - a);
+
+    if (!rowIndexes.length) return;
+
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: rowIndexes.map((index) => ({
+          deleteDimension: {
+            range: {
+              sheetId,
+              dimension: "ROWS",
+              startIndex: index,
+              endIndex: index + 1,
+            },
+          },
+        })),
+      },
+    });
+  } catch (err) {
+    console.warn(`Related ${sheetTitle} cleanup skipped:`, err.message || err);
+  }
 };
 
 const assertEventSeatsAvailable = async (eventId) => {
@@ -176,11 +303,11 @@ const decrementEventSeat = async (eventId) => {
   const updatedRow = [...row];
   updatedRow[8] = String(Math.max(0, availableSeats - 1));
   if (Number(updatedRow[8]) === 0) updatedRow[15] = "closed";
-  while (updatedRow.length < 17) updatedRow.push("");
+  while (updatedRow.length < 18) updatedRow.push("");
 
   await sheets.spreadsheets.values.update({
     spreadsheetId,
-    range: `Events!A${sheetRow}:Q${sheetRow}`,
+    range: `Events!A${sheetRow}:R${sheetRow}`,
     valueInputOption: "RAW",
     requestBody: { values: [updatedRow] },
   });
@@ -200,7 +327,7 @@ app.put("/events/:id/status", async (req, res) => {
 
     const rows = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: "Events!A:Q",
+      range: "Events!A:S",
     });
 
     const data = rows.data.values || [];
@@ -221,11 +348,11 @@ app.put("/events/:id/status", async (req, res) => {
     const existingRow = [...data[rowIndex]];
     existingRow[15] = status;
 
-    while (existingRow.length < 17) existingRow.push("");
+    while (existingRow.length < 18) existingRow.push("");
 
     await sheets.spreadsheets.values.update({
       spreadsheetId,
-      range: `Events!A${sheetRow}:Q${sheetRow}`,
+      range: `Events!A${sheetRow}:S${sheetRow}`,
       valueInputOption: "RAW",
       requestBody: { values: [existingRow] },
     });
@@ -239,6 +366,98 @@ app.put("/events/:id/status", async (req, res) => {
   } catch (err) {
     console.log(err);
     res.status(500).json(err);
+  }
+});
+
+app.post("/events/:id/duplicate", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { row } = await getEventRowById(id);
+    const registrations = await getRegistrationsForEvent(id);
+    const duplicateId = `${id}-copy-${Date.now()}`;
+    const duplicateRow = [...row];
+
+    duplicateRow[0] = duplicateId;
+    duplicateRow[1] = `${row[1] || "Untitled Event"} (Copy)`;
+    duplicateRow[8] = String((Number.parseInt(row[8] || "0", 10) || 0) + registrations.length);
+    duplicateRow[15] = "draft";
+    duplicateRow[17] = new Date().toISOString();
+    while (duplicateRow.length < 19) duplicateRow.push("");
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: "Events!A:S",
+      valueInputOption: "USER_ENTERED",
+      requestBody: { values: [duplicateRow.slice(0, 19)] },
+    });
+
+    const paymentSettings = await getPaymentSettings(id);
+    if (paymentSettings.eventId === id) {
+      await ensurePaymentSettingsSheet();
+      await sheets.spreadsheets.values.append({
+        spreadsheetId,
+        range: PAYMENT_SETTINGS_RANGE,
+        valueInputOption: "USER_ENTERED",
+        requestBody: {
+          values: [[
+            duplicateId,
+            paymentSettings.upiId || "",
+            paymentSettings.qrCodeImage || "",
+            paymentSettings.merchantName || "",
+          ]],
+        },
+      });
+    }
+
+    cachedEvents = null;
+    lastFetchTime = 0;
+    res.json({ success: true, eventId: duplicateId });
+  } catch (err) {
+    console.log(err);
+    res.status(err.statusCode || 500).json({ error: err.message || "Failed to duplicate event" });
+  }
+});
+
+app.delete("/events/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rowIndex } = await getEventRowById(id);
+    const registrations = await getRegistrationsForEvent(id);
+
+    if (registrations.length > 0) {
+      return res.status(409).json({
+        error: "This event already has registrations. Permanent deletion is not allowed.",
+        archiveAllowed: true,
+        registrations: registrations.length,
+      });
+    }
+
+    const sheetId = await getSheetIdByTitle("Events");
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId,
+      requestBody: {
+        requests: [{
+          deleteDimension: {
+            range: {
+              sheetId,
+              dimension: "ROWS",
+              startIndex: rowIndex,
+              endIndex: rowIndex + 1,
+            },
+          },
+        }],
+      },
+    });
+
+    await deleteRowsByFirstColumn("PaymentSettings", PAYMENT_SETTINGS_RANGE, id);
+    await deleteRowsByFirstColumn("Glimpses", "Glimpses!A:B", id);
+
+    cachedEvents = null;
+    lastFetchTime = 0;
+    res.json({ success: true, message: "Event deleted successfully." });
+  } catch (err) {
+    console.log(err);
+    res.status(err.statusCode || 500).json({ error: err.message || "Failed to delete event" });
   }
 });
 
@@ -256,7 +475,7 @@ app.put(
 
       const rows = await sheets.spreadsheets.values.get({
         spreadsheetId,
-        range: "Events!A:Q",
+        range: "Events!A:S",
       });
       const data = rows.data.values || [];
 
@@ -276,6 +495,7 @@ app.put(
         descriptionEn, descriptionTa,
         speakersdetailsEn, speakersdetailsTa,
         status,
+        registrationFee,
       } = req.body;
 
       // ── Banner upload ──────────────────────────────────────────────────────
@@ -361,7 +581,7 @@ app.put(
       // ── Write to sheet ─────────────────────────────────────────────────────
       await sheets.spreadsheets.values.update({
         spreadsheetId,
-        range: `Events!A${sheetRow}:Q${sheetRow}`,
+        range: `Events!A${sheetRow}:S${sheetRow}`,
         valueInputOption: "RAW",
         requestBody: {
           values: [[
@@ -382,6 +602,8 @@ app.put(
             JSON.stringify(parsedSpeakersTa),   // col 14 (index 14): Speakers details_Ta — Tamil-only fields for reference
             status || data[rowIndex][15],
             bannerUrl,
+            data[rowIndex][17] || new Date().toISOString(),
+            registrationFee ?? data[rowIndex][18] ?? "",
           ]],
         },
       });
@@ -413,12 +635,13 @@ app.post(
         descriptionEn, descriptionTa,
         speakersdetailsEn, speakersdetailsTa,
         status,
+        registrationFee,
       } = req.body;
 
       // ── Duplicate check FIRST — before any uploads ─────────────────────────
       const rows = await sheets.spreadsheets.values.get({
         spreadsheetId,
-        range: "Events!A:Q",
+        range: "Events!A:S",
       });
       const data = rows.data.values || [];
       const exists = data.find(
@@ -503,7 +726,7 @@ app.post(
       // ── Write to sheet ─────────────────────────────────────────────────────
       await sheets.spreadsheets.values.append({
         spreadsheetId,
-        range: "Events!A:Q",
+        range: "Events!A:S",
         valueInputOption: "USER_ENTERED",
         requestBody: {
           values: [[
@@ -524,6 +747,8 @@ app.post(
             JSON.stringify(parsedSpeakersTa),   // col 14 (index 14): Speakers details_Ta — Tamil-only fields for reference
             status,
             bannerUrl,
+            new Date().toISOString(),
+            registrationFee || "",
           ]],
         },
       });
@@ -541,29 +766,40 @@ app.post(
 
 // ─── GET /events ──────────────────────────────────────────────────────────────
 app.get("/events", async (req, res) => {
+  const includeArchived = req.query.admin === "true" || req.query.includeArchived === "true";
   try {
     const now = Date.now();
     const bustCache = !!req.query.t;
 
     if (!bustCache && cachedEvents && now - lastFetchTime < 10000) {
-      return res.json(cachedEvents);
+      const cachedRows = includeArchived
+        ? cachedEvents
+        : cachedEvents.filter((row) => (row[15] || "").trim().toLowerCase() !== "archived");
+      return res.json(cachedRows);
     }
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
-      range: "Events!A2:Q",
+      range: "Events!A2:S",
     });
 
-    const rows = response.data.values || [];
+    const allRows = response.data.values || [];
+    const rows = allRows.filter((row) => {
+      if (includeArchived) return true;
+      return (row[15] || "").trim().toLowerCase() !== "archived";
+    });
 
-    cachedEvents = rows;
+    cachedEvents = allRows;
     lastFetchTime = now;
 
     res.json(rows);
   } catch (err) {
     console.error("GET /events failed:", err.message || err);
     if (cachedEvents) {
-      return res.json(cachedEvents);
+      const cachedRows = includeArchived
+        ? cachedEvents
+        : cachedEvents.filter((row) => (row[15] || "").trim().toLowerCase() !== "archived");
+      return res.json(cachedRows);
     }
     res.json([]);
   }
@@ -583,14 +819,25 @@ app.post("/add-event", paymentUpload.single("paymentScreenshot"), async (req, re
         !businessLocation || !yearsInBusiness || !heardAbout || !whyAttend) {
       return res.status(400).json({ error: "Missing required registration details" });
     }
-    if (!upiReference || upiReference.length < 10 || upiReference.length > 30) {
-      return res.status(400).json({ error: "UPI reference number must be 10 to 30 characters" });
+    const upiError = validateUpiReference(upiReference);
+    if (upiError) {
+      return res.status(400).json({ error: upiError });
     }
     if (!req.file) {
       return res.status(400).json({ error: "Payment screenshot is required" });
     }
 
     await assertEventSeatsAvailable(eventId);
+
+    const eventRecord = await getEventRowById(eventId).catch(() => ({ row: [] }));
+    const registrationFee = eventRecord.row[18] || "";
+    const registrationRows = await getAllRegistrationRows();
+    assertUniquePaymentAndRegistration(registrationRows, {
+      eventId,
+      phone,
+      email,
+      upiReference,
+    });
 
     const paymentSettings = await getPaymentSettings(eventId);
     const registrationId = await generateRegistrationId();
@@ -611,8 +858,10 @@ app.post("/add-event", paymentUpload.single("paymentScreenshot"), async (req, re
           eventDate: eventDate || "",
           eventTime: eventTime || "",
           eventVenue: eventVenue || "",
-          registrationFee: paymentSettings.registrationFee || "",
+          registrationFee,
           phone,
+          eventBanner: eventRecord.row[16] || "",
+          paymentStatus: PAYMENT_STATUS.pending,
         });
         emailStatus = "Sent";
       } catch (emailError) {
@@ -623,7 +872,7 @@ app.post("/add-event", paymentUpload.single("paymentScreenshot"), async (req, re
 
     await sheets.spreadsheets.values.append({
       spreadsheetId,
-      range: "Registrations!A:U",
+      range: REGISTRATION_RANGE,
       valueInputOption: "USER_ENTERED",
       requestBody: {
         values: [[
@@ -631,8 +880,10 @@ app.post("/add-event", paymentUpload.single("paymentScreenshot"), async (req, re
           businessLocation, businessName, designation, category,
           yearsInBusiness, heardAbout, whyAttend, employees || "",
           website || "", registrationId, upiReference, screenshotUrl,
-          emailStatus, paymentSettings.registrationFee,
-          paymentSettings.merchantName, new Date().toISOString(),
+          emailStatus, registrationFee,
+          paymentSettings.merchantName || "", new Date().toISOString(),
+          PAYMENT_STATUS.pending,
+          "",
         ]],
       },
     });
@@ -715,14 +966,129 @@ app.post("/add-event-legacy", async (req, res) => {
 // ─── GET /registrations ───────────────────────────────────────────────────────
 app.get("/registrations", async (req, res) => {
   try {
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: "Registrations!A:U",
+    const rows = await getAllRegistrationRows();
+    const [header, ...dataRows] = rows;
+    const sortedRows = dataRows.sort((a, b) => {
+      const aTime = new Date(a[20] || 0).getTime() || 0;
+      const bTime = new Date(b[20] || 0).getTime() || 0;
+      return bTime - aTime;
     });
-    res.json(response.data.values || []);
+    res.json(header ? [header, ...sortedRows] : sortedRows);
   } catch (err) {
     console.log(err);
     res.status(500).json({ error: "Failed to fetch registrations" });
+  }
+});
+
+const findRegistrationById = async (registrationId) => {
+  const rows = await getAllRegistrationRows();
+  const rowIndex = rows.findIndex((row) => (row[14] || "").trim() === (registrationId || "").trim());
+  if (rowIndex === -1) {
+    const err = new Error("Registration not found");
+    err.statusCode = 404;
+    throw err;
+  }
+  return { rows, row: rows[rowIndex], rowIndex };
+};
+
+const updateRegistrationRow = async (row, rowIndex) => {
+  while (row.length < REGISTRATION_WRITE_COLUMNS) row.push("");
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `Registrations!A${rowIndex + 1}:W${rowIndex + 1}`,
+    valueInputOption: "RAW",
+    requestBody: { values: [row.slice(0, REGISTRATION_WRITE_COLUMNS)] },
+  });
+};
+
+app.post("/registrations/:registrationId/verify-payment", async (req, res) => {
+  try {
+    const { registrationId } = req.params;
+    const { row, rowIndex } = await findRegistrationById(registrationId);
+    const eventRecord = await getEventRowById(row[0]).catch(() => ({ row: [] }));
+
+    row[21] = PAYMENT_STATUS.verified;
+    row[22] = "";
+    await updateRegistrationRow(row, rowIndex);
+
+    await sendPaymentVerifiedEmail({
+      to: row[4],
+      name: row[2],
+      registrationId: row[14],
+      eventName: row[1],
+      eventDate: eventRecord.row[4] || "",
+      eventTime: eventRecord.row[5] || "",
+      eventVenue: eventRecord.row[6] || "",
+      registrationFee: row[18] || "",
+      paymentStatus: PAYMENT_STATUS.verified,
+    }).catch((emailError) => {
+      console.error("Payment verified email failed:", emailError);
+    });
+
+    res.json({ success: true, paymentStatus: PAYMENT_STATUS.verified });
+  } catch (err) {
+    console.log(err);
+    res.status(err.statusCode || 500).json({ error: err.message || "Failed to verify payment" });
+  }
+});
+
+app.post("/registrations/:registrationId/reject-payment", async (req, res) => {
+  try {
+    const { registrationId } = req.params;
+    const reason = String(req.body?.reason || "").trim();
+    if (!reason) {
+      return res.status(400).json({ error: "Rejection reason is required" });
+    }
+
+    const { row, rowIndex } = await findRegistrationById(registrationId);
+    row[21] = PAYMENT_STATUS.rejected;
+    row[22] = reason;
+    await updateRegistrationRow(row, rowIndex);
+
+    await sendPaymentRejectedEmail({
+      to: row[4],
+      name: row[2],
+      registrationId: row[14],
+      eventName: row[1],
+      reason,
+      supportContact: process.env.SUPPORT_CONTACT || process.env.EMAIL_FROM || "support@vedacrafts.com",
+    }).catch((emailError) => {
+      console.error("Payment rejection email failed:", emailError);
+    });
+
+    res.json({ success: true, paymentStatus: PAYMENT_STATUS.rejected });
+  } catch (err) {
+    console.log(err);
+    res.status(err.statusCode || 500).json({ error: err.message || "Failed to reject payment" });
+  }
+});
+
+app.post("/registrations/:registrationId/resend-email", async (req, res) => {
+  try {
+    const { registrationId } = req.params;
+    const { row, rowIndex } = await findRegistrationById(registrationId);
+    const eventRecord = await getEventRowById(row[0]).catch(() => ({ row: [] }));
+    await sendRegistrationEmail({
+      to: row[4],
+      name: row[2],
+      registrationId: row[14],
+      eventName: row[1],
+      eventDate: eventRecord.row[4] || "",
+      eventTime: eventRecord.row[5] || "",
+      eventVenue: eventRecord.row[6] || "",
+      registrationFee: row[18] || "",
+      phone: row[3],
+      eventBanner: eventRecord.row[16] || "",
+      paymentStatus: row[21] || PAYMENT_STATUS.pending,
+    });
+
+    row[17] = "Sent";
+    await updateRegistrationRow(row, rowIndex);
+
+    res.json({ success: true, message: "Email resent successfully." });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: err.message || "Failed to resend email" });
   }
 });
 
@@ -772,7 +1138,6 @@ app.put("/payment-settings/:eventId", paymentUpload.single("qrCodeImage"), async
       upiId || "",
       savedQrCodeImage,
       merchantName || "",
-      registrationFee || "0",
     ]];
 
     if (rowIndex === -1) {
@@ -1062,8 +1427,24 @@ app.post("/admin/reset-password", async (req, res) => {
   }
 });
 
+app.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    const message = err.code === "LIMIT_FILE_SIZE"
+      ? "Payment screenshot must be 5 MB or smaller"
+      : err.message;
+    return res.status(400).json({ error: message });
+  }
+
+  if (err?.message?.includes("Payment screenshot")) {
+    return res.status(400).json({ error: err.message });
+  }
+
+  return next(err);
+});
+
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+

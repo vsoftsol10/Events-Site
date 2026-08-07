@@ -1,4 +1,3 @@
-import AdminSidebar from "../Components/AdminSidebar";
 import { useEffect, useState, useMemo } from "react";
 import axios from "axios";
 
@@ -34,7 +33,7 @@ function Analytics() {
 
   const fetchEvents = async () => {
     try {
-      const res = await axios.get(`${API_URL}/events?t=${Date.now()}`);
+      const res = await axios.get(`${API_URL}/events?admin=true&t=${Date.now()}`);
       setEvents(res.data);
     } catch (err) {
       console.log(err);
@@ -134,10 +133,7 @@ function Analytics() {
   );
 
   return (
-    <div className="flex flex-col md:flex-row bg-[#f8f5ef] min-h-screen">
-      <AdminSidebar />
-
-      <div className="flex-1 p-4 md:p-8 space-y-6 md:space-y-8">
+    <div className="space-y-6 md:space-y-8">
 
         {/* HEADER */}
         <div>
@@ -268,7 +264,6 @@ function Analytics() {
             </ResponsiveContainer>
           </div>
         </div>
-      </div>
     </div>
   );
 }

@@ -70,6 +70,7 @@ function Hero() {
           deadline: latest[10],
           descriptionEn: latest[11],
           descriptionTa: latest[12],
+          registrationFee: latest[18] || "",
           speakersEn: JSON.parse(latest[13] || "[]"),
           speakersTa: JSON.parse(latest[14] || "[]"),
           status: latest[15],
@@ -124,10 +125,14 @@ function Hero() {
     image: "",
   };
 
+  const registrationFeeDisplay = event?.registrationFee != null && event.registrationFee !== ""
+    ? `₹${event.registrationFee}`
+    : "—";
+
   const quickInfo = [
     { icon: "📅", label: isTa ? "தேதி" : "Date", value: formattedDate },
     { icon: "🕔", label: isTa ? "நேரம்" : "Time", value: event?.time || "—" },
-    { icon: "🎟", label: isTa ? "கட்டணம்" : "Registration Fee", value: "₹299" },
+    { icon: "🎟", label: isTa ? "கட்டணம்" : "Registration Fee", value: registrationFeeDisplay },
   ];
 
   const venueInfo = {

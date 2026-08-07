@@ -276,7 +276,7 @@ function AdminLogin() {
               onFocus={() => setError("")}
               className={INPUT_CLS}
             />
-          </div>
+          </div> 
 
           <div>
             <label className="block mb-2 text-[#5C4033] font-medium">New Password</label>

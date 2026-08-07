@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import AdminSidebar from "../Components/AdminSidebar";
 
 import { API_URL } from "../config";
 
@@ -23,6 +22,7 @@ function CreateEvent() {
     deadline: "",
     descriptionEn: "",
     descriptionTa: "",
+    registrationFee: "",
     banner: null,
     speakers: [
       {
@@ -86,6 +86,7 @@ function CreateEvent() {
       formData.append("deadline", event.deadline);
       formData.append("descriptionEn", event.descriptionEn);
       formData.append("descriptionTa", event.descriptionTa);
+      formData.append("registrationFee", event.registrationFee);
       formData.append("status", statusType);
 
       if (event.banner) {
@@ -140,10 +141,7 @@ function CreateEvent() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-[#f8f5ef]">
-      <AdminSidebar />
-
-      <div className="flex-1 p-4 md:p-8">
+    <>
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-2xl md:text-3xl font-bold text-[#245c1f]">Create Event</h1>
@@ -248,6 +246,18 @@ function CreateEvent() {
                 type="date"
                 value={event.deadline}
                 onChange={(e) => setEvent({ ...event, deadline: e.target.value })}
+                className="w-full mt-2 border rounded-xl px-4 py-3"
+              />
+            </div>
+
+            <div>
+              <label className="font-medium">Registration Fee</label>
+              <input
+                type="number"
+                min="0"
+                placeholder="299"
+                value={event.registrationFee}
+                onChange={(e) => setEvent({ ...event, registrationFee: e.target.value })}
                 className="w-full mt-2 border rounded-xl px-4 py-3"
               />
             </div>
@@ -475,8 +485,7 @@ function CreateEvent() {
             </button>
           </div>
         </div>
-      </div>
-    </div>
+    </>
   );
 }
 

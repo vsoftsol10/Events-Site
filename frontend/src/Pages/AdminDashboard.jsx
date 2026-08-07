@@ -1,4 +1,3 @@
-import AdminSidebar from "../Components/AdminSidebar";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState, useMemo } from "react";
 import axios from "axios";
@@ -19,7 +18,7 @@ useEffect(() => {
 const fetchEvents = async () => {
   try {
     const res = await axios.get(
-      `${API_URL}/events?t=${Date.now()}`
+      `${API_URL}/events?admin=true&t=${Date.now()}`
     );
 
     setEvents(res.data);
@@ -68,12 +67,8 @@ const districtsCovered = useMemo(() => {
 
 }, [events]);
 
-return ( <div className="flex flex-col md:flex-row bg-[#f8f5ef] min-h-screen">
-
-
-  <AdminSidebar />
-
-  <div className="flex-1 p-4 md:p-8">
+return (
+  <>
 
     {/* Header */}
 
@@ -225,15 +220,7 @@ return ( <div className="flex flex-col md:flex-row bg-[#f8f5ef] min-h-screen">
 
 </div>
 
-
-
-
-  </div>
-
-        </div>
-
-
-
+  </>
 );
 }
 

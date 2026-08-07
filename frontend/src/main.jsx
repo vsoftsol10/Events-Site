@@ -5,10 +5,10 @@ import "./i18n";
 
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-
 import App from "./App";
 import RegistrationPage from "./Components/RegistrationPage";
 import AdminLogin from "./Components/AdminLogin";
+import AdminLayout from "./Components/AdminLayout";
 import AdminDashboard from "./Pages/AdminDashboard";
 import CreateEvent from "./Pages/CreateEvent";
 import Events from "./Pages/Events";
@@ -28,68 +28,22 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <Route path="/" element={<App />} />
         <Route path="/register" element={<RegistrationPage />} />
         <Route path="/admin-login" element={<AdminLogin />} />
+
         <Route
-  path="/dashboard"
-  element={
-    <ProtectedRoute>
-      <AdminDashboard />
-    </ProtectedRoute>
-  }
-/>
-
-<Route
-  path="/create-event"
-  element={
-    <ProtectedRoute>
-      <CreateEvent />
-    </ProtectedRoute>
-  }
-/>
-
-<Route
-  path="/events"
-  element={
-    <ProtectedRoute>
-      <Events />
-    </ProtectedRoute>
-  }
-/>
-
-<Route
-  path="/Registrations"
-  element={
-    <ProtectedRoute>
-      <Registrations />
-    </ProtectedRoute>
-  }
-/>
-
-<Route
-  path="/analytics"
-  element={
-    <ProtectedRoute>
-      <Analytics />
-    </ProtectedRoute>
-  }
-/>
-
-<Route
-  path="/settings"
-  element={
-    <ProtectedRoute>
-      <Settings />
-    </ProtectedRoute>
-  }
-/>
-
-<Route
-  path="/edit-event/:id"
-  element={
-    <ProtectedRoute>
-      <EditEvent />
-    </ProtectedRoute>
-  }
-/>
+          element={
+            <ProtectedRoute>
+              <AdminLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="create-event" element={<CreateEvent />} />
+          <Route path="events" element={<Events />} />
+          <Route path="registrations" element={<Registrations />} />
+          <Route path="analytics" element={<Analytics />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="edit-event/:id" element={<EditEvent />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   </React.StrictMode>

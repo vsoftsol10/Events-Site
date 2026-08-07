@@ -1,4 +1,3 @@
-import AdminSidebar from "../Components/AdminSidebar";
 import axios from "axios";
 import { useEffect, useState, useCallback } from "react";
 
@@ -31,7 +30,6 @@ function Settings() {
   const [qrCodeFile, setQrCodeFile]           = useState(null);
   const [qrPreview, setQrPreview]             = useState("");
   const [merchantName, setMerchantName]       = useState("");
-  const [registrationFee, setRegistrationFee] = useState("");
 
   const [profileMsg, setProfileMsg]   = useState({ type: "", text: "" });
   const [passwordMsg, setPasswordMsg] = useState({ type: "", text: "" });
@@ -55,7 +53,7 @@ function Settings() {
 
   const fetchEvents = useCallback(async () => {
     try {
-      const res = await axios.get(`${API_URL}/events?t=${Date.now()}`);
+      const res = await axios.get(`${API_URL}/events?admin=true&t=${Date.now()}`);
       setEvents(res.data || []);
       if (res.data?.length) setSelectedEventId(res.data[res.data.length - 1][0]);
     } catch (err) {
@@ -65,13 +63,12 @@ function Settings() {
 
   const fetchPaymentSettings = useCallback(async (eventId) => {
     try {
-      const res = await axios.get(`${API_URL}/payment-settings/${eventId}`);
+      const res = await axios.get(`${API_URL}/payment-settings/${eventId}?t=${Date.now()}`);
       setUpiId(res.data.upiId || "");
       setQrCodeImage(res.data.qrCodeImage || "");
       setQrCodeFile(null);
       setQrPreview(res.data.qrCodeImage || "");
       setMerchantName(res.data.merchantName || "");
-      setRegistrationFee(res.data.registrationFee || "");
     } catch (err) {
       console.log(err);
     }
@@ -156,7 +153,7 @@ function Settings() {
   };
 
   const savePaymentSettings = async () => {
-    if (!selectedEventId || !upiId.trim() || !merchantName.trim() || !registrationFee.trim() || (!qrCodeImage && !qrCodeFile)) {
+    if (!selectedEventId || !upiId.trim() || !merchantName.trim() || (!qrCodeImage && !qrCodeFile)) {
       setPaymentMsg({ type: "error", text: "Please fill all payment settings." });
       return;
     }
@@ -166,7 +163,6 @@ function Settings() {
       const payload = new FormData();
       payload.append("upiId", upiId);
       payload.append("merchantName", merchantName);
-      payload.append("registrationFee", registrationFee);
       payload.append("existingQrCodeImage", qrCodeImage);
       if (qrCodeFile) payload.append("qrCodeImage", qrCodeFile);
 
@@ -184,10 +180,7 @@ function Settings() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row bg-[#f8f5ef] min-h-screen">
-      <AdminSidebar />
-
-      <div className="flex-1 p-4 md:p-10">
+    <>
 
         {/* Header */}
         <div className="mb-6 md:mb-8">
@@ -285,18 +278,6 @@ function Settings() {
                   </option>
                 ))}
               </select>
-            </div>
-
-            <div>
-              <label className="text-sm text-gray-700">Registration Fee</label>
-              <input
-                type="number"
-                min="0"
-                value={registrationFee}
-                onChange={(e) => setRegistrationFee(e.target.value)}
-                placeholder="299"
-                className={INPUT_CLS}
-              />
             </div>
 
             <div>
@@ -419,9 +400,7 @@ function Settings() {
             </button>
           </div>
         </div>
-
-      </div>
-    </div>
+    </>
   );
 }
 

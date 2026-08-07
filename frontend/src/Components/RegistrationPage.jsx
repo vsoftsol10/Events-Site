@@ -58,6 +58,7 @@ function RegistrationPage() {
           deadline: latest[10],
           descriptionEn: latest[11],
           descriptionTa: latest[12],
+          registrationFee: latest[18] || "",
         });
       }
     } catch (err) {
@@ -67,8 +68,8 @@ function RegistrationPage() {
 
   const fetchPaymentSettings = async (eventId) => {
     try {
-      const res = await axios.get(`${API_URL}/payment-settings/${eventId}`);
-      setPaymentSettings(res.data);
+      const res = await axios.get(`${API_URL}/payment-settings/${eventId}?t=${Date.now()}`);
+      setPaymentSettings({ ...(res.data || {}), loadedAt: Date.now() });
     } catch (err) {
       console.log(err);
     }
@@ -76,7 +77,12 @@ function RegistrationPage() {
 
   const eventTitle = i18n.language === "ta" ? event?.titleTa : event?.titleEn;
   const eventVenue = i18n.language === "ta" ? event?.venueTa : event?.venueEn;
-  const fee = paymentSettings?.registrationFee || "0";
+  const fee = event?.registrationFee != null && event.registrationFee !== ""
+    ? event.registrationFee
+    : "0";
+  const qrCodeSrc = paymentSettings?.qrCodeImage
+    ? `${paymentSettings.qrCodeImage}${paymentSettings.qrCodeImage.includes("?") ? "&" : "?"}v=${paymentSettings.loadedAt || Date.now()}`
+    : "";
 
   const formattedDate = useMemo(() => {
     if (!event?.date) return "Coming Soon";
@@ -113,8 +119,12 @@ function RegistrationPage() {
   };
 
   const validatePayment = () => {
-    if (upiReference.trim().length < 10 || upiReference.trim().length > 30) {
-      return "UPI reference number must be 10 to 30 characters";
+    const reference = upiReference.trim();
+    if (!reference) return "UPI Reference Number is required";
+    if (reference.length < 10) return "UPI Reference Number is too short";
+    if (reference.length > 30) return "UPI Reference Number is too long";
+    if (!/^[A-Za-z0-9]+$/.test(reference)) {
+      return "UPI Reference Number contains invalid characters";
     }
     if (!paymentScreenshot) return "Please upload your payment screenshot";
     if (!["image/jpeg", "image/jpg", "image/png"].includes(paymentScreenshot.type)) {
@@ -265,20 +275,35 @@ function RegistrationPage() {
                   ) : (
                     <form className="space-y-6" onSubmit={confirmRegistration}>
                       <div className="grid grid-cols-1 xl:grid-cols-[320px_1fr] gap-6">
-                        <div className="bg-[#f8f5ef] rounded-2xl border border-[#e6dcc6] p-5 text-center">
-                          <p className="text-sm text-[#7a5c47]">Registration Fee</p>
-                          <p className="text-3xl font-bold text-green-800 mt-2">Rs. {fee}</p>
+                        <div className="bg-[#f8f5ef] rounded-2xl border border-[#e6dcc6] p-5">
+                          <div className="text-center">
+                            <p className="text-sm font-medium text-[#7a5c47]">Registration Fee</p>
+                            <p className="text-3xl font-bold text-green-800 mt-2">Rs. {fee}</p>
+                          </div>
                           <div className="mt-5 bg-white rounded-2xl p-4 border border-[#e6dcc6]">
-                            {paymentSettings?.qrCodeImage ? (
-                              <img src={paymentSettings.qrCodeImage} alt="Event payment QR code" className="w-full max-w-[240px] mx-auto rounded-xl object-contain" />
+                            {qrCodeSrc ? (
+                              <img
+                                key={qrCodeSrc}
+                                src={qrCodeSrc}
+                                alt="Latest event payment QR code"
+                                className="w-full max-w-[240px] mx-auto rounded-xl object-contain"
+                              />
                             ) : (
                               <div className="h-56 flex items-center justify-center text-sm text-gray-500">
                                 QR Code not configured
                               </div>
                             )}
                           </div>
-                          <p className="mt-4 text-sm text-[#7a5c47]">UPI ID</p>
-                          <p className="font-semibold text-green-800 break-all">{paymentSettings?.upiId || "Not configured"}</p>
+                          <div className="mt-5 space-y-3 rounded-2xl border border-[#e6dcc6] bg-white p-4 text-left">
+                            <div>
+                              <p className="text-xs font-semibold uppercase tracking-wide text-[#7a5c47]">Merchant Name</p>
+                              <p className="mt-1 font-semibold text-green-800 break-words">{paymentSettings?.merchantName || "Not configured"}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold uppercase tracking-wide text-[#7a5c47]">UPI ID</p>
+                              <p className="mt-1 font-semibold text-green-800 break-all">{paymentSettings?.upiId || "Not configured"}</p>
+                            </div>
+                          </div>
                         </div>
 
                         <div className="space-y-5">
