@@ -30,7 +30,7 @@ function AdminSidebar() {
     <>
       {/* Mobile top bar */}
       <div className="md:hidden flex items-center justify-between bg-[#EDF0DB] px-4 py-3 sticky top-0 z-50">
-        <img src={logo} alt="VsoftSolutions" className="w-28" />
+        <img src={logo} alt="Vedacraft" className="w-28" />
         <button onClick={() => setIsOpen(!isOpen)} className="text-[#5C4033]">
           {isOpen ? <X size={28} /> : <Menu size={28} />}
         </button>
@@ -51,7 +51,7 @@ function AdminSidebar() {
           ${isOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0 md:border-r`}
       >
         <div className="text-center border-b border-white/20 pb-6">
-          <img src={logo} alt="VsoftSolutions" className="w-40 mx-auto" />
+          <img src={logo} alt="Vedacraft" className="w-40 mx-auto" />
         </div>
 
         <p className="text-[#5C4033] text-center mt-0 text-sm tracking-widest">

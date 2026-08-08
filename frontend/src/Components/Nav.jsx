@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import logo from "../assets/logo.png";
+import logo from "../assets/Vsoft Logo black.png";
 import leaf from "../assets/leaves.png";
 import border from "../assets/bg.jpg";
 import { useNavigate } from "react-router-dom";
@@ -92,7 +92,7 @@ function Nav({ showBackButton = false }) {
             <div className="flex items-center gap-0">
               <img
                 src={logo}
-                alt="VsoftSolutions logo"
+                alt="Vedacraft logo"
                 className="w-20 h-20 sm:w-16 sm:h-16 md:w-35 md:h-22 object-contain mix-blend-multiply   p-1 "
               />
             </div>

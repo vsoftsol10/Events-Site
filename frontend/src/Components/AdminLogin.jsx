@@ -22,7 +22,7 @@ function Card({ children }) {
       <div className="w-full max-w-md bg-[#f7f4ec] rounded-[32px] p-6 sm:p-8 shadow-2xl">
         {/* Logo */}
         <div className="text-center mb-8">
-          <img src={logo} alt="VsoftSolutions Logo" className="w-40 sm:w-52 mx-auto object-contain" />
+          <img src={logo} alt="Vedacraft Logo" className="w-40 sm:w-52 mx-auto object-contain" />
           <p className="text-sm text-[#5C4033] font-bold ml-4 mt-1">
             Connect <span className="text-[#D4A017]">•</span>{" "}
             Collaborate <span className="text-[#D4A017]">•</span>{" "}
@@ -37,7 +37,7 @@ function Card({ children }) {
         {children}
 
         <div className="mt-8 bg-[#e8f2e7] rounded-2xl p-4 text-center text-[#5C4033] text-sm">
-          🔒 Secure Admin Access • VsoftSolutions Internal Use Only
+          🔒 Secure Admin Access • Vedacraft Internal Use Only
         </div>
       </div>
     </div>

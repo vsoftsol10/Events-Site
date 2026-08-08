@@ -87,11 +87,11 @@ function Footer() {
                 </p>
                 <p className="flex items-center gap-2">
                   <Mail size={15} className="text-[#E8C468] shrink-0" />
-                  vsoftsolutions@gmail.com
+                  vedaconnecttvl@gmail.com
                 </p>
                 <p className="flex items-center gap-2">
                   <Phone size={15} className="text-[#E8C468] shrink-0" />
-                  +91 98765 43210
+                  +91 9095422237
                 </p>
               </div>
             </div>
@@ -103,7 +103,7 @@ function Footer() {
                 &copy; 2026 {t("vedacrafts")}. {t("allRightsReserved") || "All rights reserved."}
               </p>
 
-              <div className="flex gap-2.5 md:gap-3">
+              {/* <div className="flex gap-2.5 md:gap-3">
                 {socialIcons.map(function (Icon, i) {
                   return (
                     
@@ -116,7 +116,7 @@ function Footer() {
                     </a>
                   );
                 })}
-              </div>
+              </div> */}
             </div>
           </div>
         </div>

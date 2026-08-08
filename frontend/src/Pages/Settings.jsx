@@ -217,7 +217,7 @@ function Settings() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 onFocus={() => setProfileMsg({ type: "", text: "" })}
-                placeholder="admin@vsoftsolutions.com"
+                placeholder="admin@vedacraft.com"
                 className={INPUT_CLS}
               />
             </div>
