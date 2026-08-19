@@ -1550,6 +1550,29 @@ const getAllRegistrationRows = async () => {
   return response.data.values || [];
 };
 
+const appendRegistrationRow = async (row) => {
+  const rows = await getAllRegistrationRows();
+  const lastUsedIndex = rows.reduce(
+    (lastIndex, existingRow, index) =>
+      existingRow.some((cell) => String(cell || "").trim())
+        ? index
+        : lastIndex,
+    0
+  );
+  const nextSheetRow = Math.max(lastUsedIndex + 2, 2);
+  const rowToWrite = [...row];
+  while (rowToWrite.length < REGISTRATION_WRITE_COLUMNS) rowToWrite.push("");
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `Registrations!A${nextSheetRow}:W${nextSheetRow}`,
+    valueInputOption: "USER_ENTERED",
+    requestBody: {
+      values: [rowToWrite.slice(0, REGISTRATION_WRITE_COLUMNS)],
+    },
+  });
+};
+
 const assertUniquePaymentAndRegistration = (rows, { eventId, phone, email, upiReference }) => {
   const dataRows = rows.slice(1);
   const enteredReference = normalizeCompact(upiReference);
@@ -2388,23 +2411,16 @@ app.post("/add-event", paymentUpload.single("paymentScreenshot"), async (req, re
 
     await decrementEventSeat(eventId);
 
-    await sheets.spreadsheets.values.append({
-      spreadsheetId,
-      range: REGISTRATION_RANGE,
-      valueInputOption: "USER_ENTERED",
-      requestBody: {
-        values: [[
-          eventId, eventTitle, name, phone, email,
-          businessLocation, businessName, designation, category,
-          yearsInBusiness, heardAbout, whyAttend, employees || "",
-          website || "", registrationId, upiReference, screenshotUrl,
-          emailStatus, registrationFee,
-          paymentSettings.merchantName || "", new Date().toISOString(),
-          PAYMENT_STATUS.pending,
-          "",
-        ]],
-      },
-    });
+    await appendRegistrationRow([
+      eventId, eventTitle, name, phone, email,
+      businessLocation, businessName, designation, category,
+      yearsInBusiness, heardAbout, whyAttend, employees || "",
+      website || "", registrationId, upiReference, screenshotUrl,
+      emailStatus, registrationFee,
+      paymentSettings.merchantName || "", new Date().toISOString(),
+      PAYMENT_STATUS.pending,
+      "",
+    ]);
 
     return res.status(200).json({
       success: true,
