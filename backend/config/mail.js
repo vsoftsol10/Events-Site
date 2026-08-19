@@ -14,14 +14,17 @@ const escapeHtml = (value = "") =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 
+const SUPPORT_CONTACT = "9095422237";
+const WEBSITE_URL = "https://vedacraftscommunity.in/";
+
 const verifyTransporter = async () => {
   if (!client) {
     throw new Error("Brevo client not initialized. Check BREVO_API_KEY.");
   }
 
-  const emailFrom = process.env.EMAIL_FROM && process.env.EMAIL_FROM.trim();
+  const emailFrom = (process.env.EMAIL_FROM || process.env.EMAIL_USER || "").trim();
   if (!emailFrom) {
-    throw new Error("EMAIL_FROM env var is missing. Set it to a verified Brevo sender address.");
+    throw new Error("Sender email is missing. Set EMAIL_FROM or EMAIL_USER to a verified Brevo sender address.");
   }
 
   const lower = emailFrom.toLowerCase();
@@ -35,7 +38,7 @@ const verifyTransporter = async () => {
 
   if (placeholderIndicators.some((p) => lower.includes(p))) {
     throw new Error(
-      `EMAIL_FROM ("${emailFrom}") looks like a placeholder. Set EMAIL_FROM to a real email you control and verify it in Brevo.`
+      `Sender email ("${emailFrom}") looks like a placeholder. Set EMAIL_FROM to a real email you control and verify it in Brevo.`
     );
   }
 
@@ -81,8 +84,8 @@ const sendRegistrationEmail = async ({
     ["Venue", eventVenue],
     ["Registration Fee", registrationFee ? `Rs. ${String(registrationFee).replace(/^rs\.?\s*/i, "")}` : ""],
     ["Payment Status", paymentStatus],
-    ["Contact Number", phone],
-    ["Website", "https://vedacrafts.com"],
+    ["Contact Number", SUPPORT_CONTACT],
+    ["Website", WEBSITE_URL],
   ];
 
   const html = `
@@ -143,7 +146,7 @@ const sendRegistrationEmail = async ({
             <tr>
               <td style="background:#245c1f;padding:22px 30px;text-align:center;color:#dfead6;font-size:13px;line-height:1.7;">
                 <strong style="color:#ffbe2a;">Thank you, Team VedaCraft</strong><br>
-                Contact: ${escapeHtml(phone || "-")} | Website: vedacrafts.com<br>
+                Contact: ${SUPPORT_CONTACT} | Website: ${WEBSITE_URL}<br>
                 This is an automated confirmation email.
               </td>
             </tr>
@@ -166,8 +169,8 @@ Time: ${eventTime || "-"}
 Venue: ${eventVenue || "-"}
 Registration Fee: ${registrationFee || "-"}
 Payment Status: ${paymentStatus}
-Contact Number: ${phone || "-"}
-Website: https://vedacrafts.com
+Contact Number: ${SUPPORT_CONTACT}
+Website: ${WEBSITE_URL}
 
 Thank you,
 Team VedaCraft`;
@@ -316,9 +319,96 @@ Support Contact: ${supportContact || "-"}`;
   });
 };
 
+const sendCompanyRegistrationAlert = async ({
+  name,
+  phone,
+  email,
+  businessName,
+  category,
+  designation,
+  businessLocation,
+  registrationId,
+  eventName,
+  eventDate,
+  eventTime,
+  eventVenue,
+  registrationFee,
+}) => {
+  const companyEmail = (
+    process.env.COMPANY_EMAIL ||
+    process.env.ADMIN_EMAIL ||
+    process.env.EMAIL_USER ||
+    ""
+  ).trim();
+
+  if (!companyEmail) {
+    throw new Error("Company alert recipient is missing. Set COMPANY_EMAIL, ADMIN_EMAIL, or EMAIL_USER.");
+  }
+
+  const { brevoClient, emailFrom } = await verifyTransporter();
+  const rows = [
+    ["Registration ID", registrationId],
+    ["Participant Name", name],
+    ["Phone", phone],
+    ["Email", email],
+    ["Business Name", businessName],
+    ["Category", category],
+    ["Designation", designation],
+    ["Business Location", businessLocation],
+    ["Event Name", eventName],
+    ["Date", eventDate],
+    ["Time", eventTime],
+    ["Venue", eventVenue],
+    ["Registration Fee", registrationFee ? `Rs. ${String(registrationFee).replace(/^rs\.?\s*/i, "")}` : ""],
+  ];
+
+  const html = `
+<!doctype html>
+<html>
+  <body style="margin:0;background:#f6f8ed;font-family:Arial,'Segoe UI',sans-serif;color:#24311f;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f6f8ed;padding:24px 12px;">
+      <tr><td align="center">
+        <table role="presentation" width="620" cellspacing="0" cellpadding="0" style="width:100%;max-width:620px;background:#ffffff;border:1px solid #e4ebd2;border-radius:14px;overflow:hidden;">
+          <tr><td style="background:#245c1f;color:#ffffff;padding:22px 26px;">
+            <h1 style="margin:0;font-size:22px;">New Event Registration</h1>
+            <p style="margin:8px 0 0;line-height:1.5;">${escapeHtml(eventName || "VedaCraft Event")}</p>
+          </td></tr>
+          <tr><td style="padding:22px 26px;">
+            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border:1px solid #e7edd7;border-radius:10px;overflow:hidden;">
+              ${rows.map(([label, value], index) => `
+                <tr style="background:${index % 2 === 0 ? "#fbfdf6" : "#ffffff"};">
+                  <td style="padding:11px 14px;border-bottom:1px solid #eef2e3;color:#62705a;font-size:13px;width:42%;">${escapeHtml(label)}</td>
+                  <td style="padding:11px 14px;border-bottom:1px solid #eef2e3;color:#245c1f;font-size:14px;font-weight:700;">${escapeHtml(value || "-")}</td>
+                </tr>`).join("")}
+            </table>
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </body>
+</html>`;
+
+  const text = `New Event Registration
+
+${rows.map(([label, value]) => `${label}: ${value || "-"}`).join("\n")}`;
+
+  await brevoClient.transactionalEmails.sendTransacEmail({
+    sender: { email: emailFrom, name: process.env.EMAIL_FROM_NAME || "VedaCraft" },
+    to: [{ email: companyEmail, name: "VedaCraft Admin" }],
+    subject: `New Registration - ${eventName || registrationId || "VedaCraft Event"}`,
+    htmlContent: html,
+    textContent: text,
+    headers: {
+      "X-Mailin-Tag": "company-registration-alert",
+    },
+  });
+};
+
 module.exports = {
   verifyTransporter,
   sendRegistrationEmail,
   sendPaymentVerifiedEmail,
   sendPaymentRejectedEmail,
+  sendCompanyRegistrationAlert,
 };
+
