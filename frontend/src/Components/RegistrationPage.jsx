@@ -187,7 +187,7 @@ function RegistrationPage() {
               <div>Time: {event?.time || "TBA"}</div>
               <div>Venue: {eventVenue}</div>
               <div>Registration Fee: Rs. {fee}</div>
-              <div>{event?.seats || 0} Seats Left</div>
+              <div>30 </div>
             </div>
 
             <div className="mt-6 md:mt-8 bg-[#fff4dd] border border-[#ffbe2a] rounded-2xl p-4 md:p-5">

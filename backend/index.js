@@ -1497,6 +1497,10 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.get("/", (req, res) => {
+  res.json({ success: true, service: "Vedacrafts Events API" });
+});
+
 const upload = multer({ storage: multer.memoryStorage() });
 
 const REGISTRATION_RANGE = "Registrations!A:W";
@@ -2376,6 +2380,8 @@ app.post("/add-event", paymentUpload.single("paymentScreenshot"), async (req, re
 
     // ─── WhatsApp to the registered person (best-effort) ────────────────────
     let whatsappStatus = "Not Sent";
+    let whatsappErrorMessage = "";
+    let whatsappErrorDetails = null;
     try {
       await sendRegistrationWhatsApp({
         phone,
@@ -2387,27 +2393,48 @@ app.post("/add-event", paymentUpload.single("paymentScreenshot"), async (req, re
         eventVenue: eventVenue || "",
       });
       whatsappStatus = "Sent";
-    } catch (whatsappError) {
-      console.error("Registration WhatsApp message failed:", whatsappError.message || whatsappError);
-      whatsappStatus = "Failed";
-    }
-
+} catch (whatsappError) {
+  console.error(
+    "Registration WhatsApp message failed:",
+    whatsappError.message || whatsappError
+  );
+  console.error(
+    "Meta API details:",
+    JSON.stringify(whatsappError.details || {}, null, 2)
+  );
+  whatsappErrorMessage = whatsappError.message || "WhatsApp message failed";
+  whatsappErrorDetails = whatsappError.details || null;
+  whatsappStatus = "Failed";
+}
     // ─── WhatsApp to the company number (best-effort) ────────────────────────
     let companyWhatsappStatus = "Not Sent";
+    let companyWhatsappErrorMessage = "";
+    let companyWhatsappErrorDetails = null;
     try {
       await sendCompanyWhatsAppAlert({
         name,
         phone,
         email,
         businessName,
+        location: businessLocation,
         eventName: eventTitle || "",
         registrationId,
       });
       companyWhatsappStatus = "Sent";
-    } catch (companyWhatsappError) {
-      console.error("Company WhatsApp alert failed:", companyWhatsappError.message || companyWhatsappError);
-      companyWhatsappStatus = "Failed";
-    }
+   } catch (companyWhatsappError) {
+  console.error(
+    "Company WhatsApp alert failed:",
+    companyWhatsappError.message || companyWhatsappError
+  );
+  console.error(
+    "Meta API details:",
+    JSON.stringify(companyWhatsappError.details || {}, null, 2)
+  );
+  companyWhatsappErrorMessage =
+    companyWhatsappError.message || "Company WhatsApp alert failed";
+  companyWhatsappErrorDetails = companyWhatsappError.details || null;
+  companyWhatsappStatus = "Failed";
+}
 
     await decrementEventSeat(eventId);
 
@@ -2430,6 +2457,10 @@ app.post("/add-event", paymentUpload.single("paymentScreenshot"), async (req, re
       companyEmailStatus,
       whatsappStatus,
       companyWhatsappStatus,
+      whatsappErrorMessage,
+      whatsappErrorDetails,
+      companyWhatsappErrorMessage,
+      companyWhatsappErrorDetails,
     });
   } catch (err) {
     console.error("Complete registration workflow crash:", err);
