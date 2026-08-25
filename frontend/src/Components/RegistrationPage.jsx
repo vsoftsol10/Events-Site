@@ -98,12 +98,10 @@ function RegistrationPage() {
     if (!/^\d{10}$/.test(form.phone)) return "Mobile number must be exactly 10 digits";
     if (!/\S+@\S+\.\S+/.test(form.email)) return "Please enter a valid email address";
     if (!form.businessName.trim()) return "Please enter your company or business name";
-    if (!form.category.trim()) return "Please select your business category";
-    if (!form.designation.trim()) return "Please enter your designation";
+ 
+    
     if (!form.businessLocation.trim()) return "Please enter your business location";
-    if (!form.yearsInBusiness.trim()) return "Please select years in business";
-    if (!form.heardAbout.trim()) return "Please select how you heard about this summit";
-    if (!form.whyAttend.trim()) return "Please tell us why you want to attend";
+    
     return "";
   };
 
@@ -258,15 +256,15 @@ function RegistrationPage() {
                         <Field label="Mobile Number" value={form.phone} onChange={(value) => updateField("phone", value.replace(/\D/g, "").slice(0, 10))} required />
                         <Field label="Email Address" type="email" value={form.email} onChange={(value) => updateField("email", value)} required />
                         <Field label="Company / Business Name" value={form.businessName} onChange={(value) => updateField("businessName", value)} required />
-                        <SelectField label="Business Category" value={form.category} onChange={(value) => updateField("category", value)} options={["Manufacturing", "Retail", "Services", "Food & Beverage", "Technology", "Healthcare", "Education", "Other"]} required />
-                        <Field label="Designation" value={form.designation} onChange={(value) => updateField("designation", value)} required />
+                        <SelectField label="Business Category" value={form.category} onChange={(value) => updateField("category", value)} options={["Manufacturing", "Retail", "Services", "Food & Beverage", "Technology", "Healthcare", "Education", "Other"]} />
+                        <Field label="Designation" value={form.designation} onChange={(value) => updateField("designation", value)} />
                         <Field label="Business Location" value={form.businessLocation} onChange={(value) => updateField("businessLocation", value)} required />
-                        <SelectField label="Years in Business" value={form.yearsInBusiness} onChange={(value) => updateField("yearsInBusiness", value)} options={["Planning to start", "Less than 1 year", "1-2 years", "3-5 years", "More than 5 years"]} required />
+                        <SelectField label="Years in Business" value={form.yearsInBusiness} onChange={(value) => updateField("yearsInBusiness", value)} options={["Planning to start", "Less than 1 year", "1-2 years", "3-5 years", "More than 5 years"]} />
                         <Field label="Number of Employees" value={form.employees} onChange={(value) => updateField("employees", value)} />
                         <Field label="Website / Social Media" value={form.website} onChange={(value) => updateField("website", value)} />
-                        <SelectField label="How did you hear about this summit?" value={form.heardAbout} onChange={(value) => updateField("heardAbout", value)} options={["Social Media", "Friend / Colleague", "WhatsApp", "Email", "Poster / Banner", "Other"]} required />
+                        <SelectField label="How did you hear about this summit?" value={form.heardAbout} onChange={(value) => updateField("heardAbout", value)} options={["Social Media", "Friend / Colleague", "WhatsApp", "Email", "Poster / Banner", "Other"]} />
                       </div>
-                      <TextArea label="Why do you want to attend?" value={form.whyAttend} onChange={(value) => updateField("whyAttend", value)} required />
+                      <TextArea label="Why do you want to attend?" value={form.whyAttend} onChange={(value) => updateField("whyAttend", value)} />
 
                       <button type="submit" className="w-full bg-green-800 text-white py-3 text-sm rounded-3xl font-semibold cursor-pointer hover:bg-green-700 transition">
                         Continue to Payment
