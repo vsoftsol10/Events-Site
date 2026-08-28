@@ -258,6 +258,7 @@ const validateDetails = () => {
                         <Field label="Designation" value={form.designation} onChange={(value) => updateField("designation", value)} />
                         <Field label="Business Location" value={form.businessLocation} onChange={(value) => updateField("businessLocation", value)} required />
                         <SelectField label="Years in Business" value={form.yearsInBusiness} onChange={(value) => updateField("yearsInBusiness", value)} options={["Planning to start", "Less than 1 year", "1-2 years", "3-5 years", "More than 5 years"]} />
+                        <SelectField label="Years in Business" value={form.yearsInBusiness} onChange={(value) => updateField("yearsInBusiness", value)} options={["Planning to start", "Less than 1 year", "1-2 years", "3-5 years", "More than 5 years"]} />
                         <Field label="Number of Employees" value={form.employees} onChange={(value) => updateField("employees", value)} />
                         <Field label="Website / Social Media" value={form.website} onChange={(value) => updateField("website", value)} />
                        <SelectField label="How did you hear about this summit?" value={form.heardAbout} onChange={(value) => updateField("heardAbout", value)} options={["Social Media", "Friend / Colleague", "WhatsApp", "Email", "Poster / Banner", "Other"]} />
