@@ -1,11 +1,36 @@
-import { useState } from "react";
+
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
 import { API_URL } from "../config";
+import { useState, useRef, useEffect } from "react";
 
 function CreateEvent() {
   const navigate = useNavigate();
+
+  const districts = [
+  "Chennai", "Coimbatore", "Madurai", "Salem", "Trichy", "Ariyalur",
+  "Chengalpattu", "Cuddalore", "Dharmapuri", "Dindigul", "Erode",
+  "Kallakurichi", "Kanchipuram", "Kanniyakumari", "Karur", "Krishnagiri",
+  "Mayiladuthurai", "Nagapattinam", "Namakkal", "Nilgiris", "Perambalur",
+  "Pudukkottai", "Ramanathapuram", "Ranipet", "Sivaganga", "Tenkasi",
+  "Thanjavur", "Theni", "Thiruvallur", "Thiruvarur", "Thoothukudi",
+  "Tiruchirappalli", "Tirunelveli", "Tirupattur", "Tiruppur",
+  "Tiruvannamalai", "Vellore", "Viluppuram", "Virudhunagar",
+];
+
+const [districtOpen, setDistrictOpen] = useState(false);
+const districtRef = useRef(null);
+
+useEffect(() => {
+  const handleClickOutside = (e) => {
+    if (districtRef.current && !districtRef.current.contains(e.target)) {
+      setDistrictOpen(false);
+    }
+  };
+  document.addEventListener("mousedown", handleClickOutside);
+  return () => document.removeEventListener("mousedown", handleClickOutside);
+}, []);
 
   const [submitting, setSubmitting] = useState(false);
 
@@ -159,27 +184,29 @@ function CreateEvent() {
               placeholder="Event Title (English)"
               value={event.titleEn}
               onChange={(e) => setEvent({ ...event, titleEn: e.target.value })}
-              className="w-full border rounded-xl px-4 py-3"
+              className="w-full h-12 border rounded-xl px-4 py-0"
             />
             <input
               type="text"
               placeholder="Event Title (Tamil)"
               value={event.titleTa}
               onChange={(e) => setEvent({ ...event, titleTa: e.target.value })}
-              className="w-full border rounded-xl px-4 py-3"
+              className="w-full h-12 border rounded-xl px-4 py-0"
             />
 
             {/* TYPE */}
-            <select
-              value={event.type}
-              onChange={(e) => setEvent({ ...event, type: e.target.value })}
-              className="w-full border rounded-xl px-4 py-3"
-            >
-              <option value="">Select Type</option>
-              <option>Offline</option>
-              <option>Online</option>
-              <option>Hybrid</option>
-            </select>
+            <div className="pt-7">
+              <select
+                value={event.type}
+                onChange={(e) => setEvent({ ...event, type: e.target.value })}
+                className="w-full h-12 border rounded-xl px-4 py-0"
+              >
+                <option value="">Select Type</option>
+                <option>Offline</option>
+                <option>Online</option>
+                <option>Hybrid</option>
+              </select>
+            </div>
 
             {/* DATE */}
             <div>
@@ -188,7 +215,7 @@ function CreateEvent() {
                 type="date"
                 value={event.date}
                 onChange={(e) => setEvent({ ...event, date: e.target.value })}
-                className="w-full mt-2 border rounded-xl px-4 py-3"
+                className="w-full h-12 mt-2 border rounded-xl px-4 py-0"
               />
             </div>
 
@@ -197,7 +224,7 @@ function CreateEvent() {
               type="time"
               value={event.time}
               onChange={(e) => setEvent({ ...event, time: e.target.value })}
-              className="w-full border rounded-xl px-4 py-3"
+              className="w-full h-12 border rounded-xl px-4 py-0"
             />
 
             {/* VENUE */}
@@ -206,14 +233,14 @@ function CreateEvent() {
               placeholder="Venue (English)"
               value={event.venueEn}
               onChange={(e) => setEvent({ ...event, venueEn: e.target.value })}
-              className="w-full border rounded-xl px-4 py-3"
+              className="w-full h-12 border rounded-xl px-4 py-0"
             />
             <input
               type="text"
               placeholder="Venue (Tamil)"
               value={event.venueTa}
               onChange={(e) => setEvent({ ...event, venueTa: e.target.value })}
-              className="w-full border rounded-xl px-4 py-3"
+              className="w-full h-12 border rounded-xl px-4 py-0"
             />
 
             {/* SEATS */}
@@ -222,22 +249,44 @@ function CreateEvent() {
               placeholder="Total Seats"
               value={event.seats}
               onChange={(e) => setEvent({ ...event, seats: e.target.value })}
-              className="w-full border rounded-xl px-4 py-3"
+              className="w-full h-12 border rounded-xl px-4 py-0"
             />
 
             {/* DISTRICT */}
-            <select
-              value={event.district}
-              onChange={(e) => setEvent({ ...event, district: e.target.value })}
-              className="w-full border rounded-xl px-4 py-3"
-            >
-              <option value="">Select District</option>
-              <option>Chennai</option>
-              <option>Coimbatore</option>
-              <option>Madurai</option>
-              <option>Salem</option>
-              <option>Trichy</option>
-            </select>
+            {/* DISTRICT */}
+<div className="pt-7 relative" ref={districtRef}>
+  <button
+    type="button"
+    onClick={() => setDistrictOpen((prev) => !prev)}
+    className="w-full h-12 border rounded-xl px-4 py-0 text-left flex items-center justify-between bg-white"
+  >
+    <span className={event.district ? "text-black" : "text-gray-400"}>
+      {event.district || "Select District"}
+    </span>
+    <span className={`transition-transform ${districtOpen ? "rotate-180" : ""}`}>
+      ▾
+    </span>
+  </button>
+
+  {districtOpen && (
+    <ul className="absolute z-20 mt-1 w-full max-h-60 overflow-y-auto border rounded-xl bg-white shadow-lg">
+      {districts.map((d) => (
+        <li
+          key={d}
+          onClick={() => {
+            setEvent({ ...event, district: d });
+            setDistrictOpen(false);
+          }}
+          className={`px-4 py-2 cursor-pointer hover:bg-gray-100 ${
+            event.district === d ? "bg-[#245c1f]/10 font-medium" : ""
+          }`}
+        >
+          {d}
+        </li>
+      ))}
+    </ul>
+  )}
+</div>
 
             {/* DEADLINE */}
             <div>
@@ -246,7 +295,7 @@ function CreateEvent() {
                 type="date"
                 value={event.deadline}
                 onChange={(e) => setEvent({ ...event, deadline: e.target.value })}
-                className="w-full mt-2 border rounded-xl px-4 py-3"
+                className="w-full h-12 mt-2 border rounded-xl px-4 py-0"
               />
             </div>
 
@@ -258,7 +307,7 @@ function CreateEvent() {
                 placeholder="299"
                 value={event.registrationFee}
                 onChange={(e) => setEvent({ ...event, registrationFee: e.target.value })}
-                className="w-full mt-2 border rounded-xl px-4 py-3"
+                className="w-full h-12 mt-2 border rounded-xl px-4 py-0"
               />
             </div>
           </div>

@@ -119,10 +119,17 @@ function Events() {
       const updatedEvents = rows.map((ev) => {
         const newEvent = [...ev];
         const status = normalizeStatus(newEvent[15]);
-        const deadline = new Date(newEvent[10]);
+        const deadline = newEvent[10]
+  ? new Date(`${newEvent[10]}T23:59:59`)
+  : null;
 
-        if (status === "published" && !Number.isNaN(deadline.getTime()) && deadline < today) {
-          newEvent[15] = "closed";
+if (
+  status === "published" &&
+  deadline &&
+  !Number.isNaN(deadline.getTime()) &&
+  deadline < today
+) {
+  newEvent[15] = "closed";
           axios.put(`${API_URL}/events/${newEvent[0]}/status`, { status: "closed" })
             .catch((err) => console.log("Auto-close failed:", err));
         } else {

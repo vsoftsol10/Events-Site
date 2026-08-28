@@ -2299,10 +2299,9 @@ app.post("/add-event", paymentUpload.single("paymentScreenshot"), async (req, re
   } = req.body;
 
   try {
-    if (!name || !phone || !email || !businessName || !category || !designation ||
-        !businessLocation || !yearsInBusiness || !heardAbout || !whyAttend) {
-      return res.status(400).json({ error: "Missing required registration details" });
-    }
+    if (!name || !phone || !email || !businessName || !category || !businessLocation) {
+  return res.status(400).json({ error: "Missing required registration details" });
+}
     const upiError = validateUpiReference(upiReference);
     if (upiError) {
       return res.status(400).json({ error: upiError });
@@ -2659,13 +2658,21 @@ app.post("/registrations/:registrationId/resend-email", async (req, res) => {
 });
 
 // ─── GET /glimpses ────────────────────────────────────────────────────────────
+// ─── GET /glimpses ────────────────────────────────────────────────────────────
 app.get("/glimpses", async (req, res) => {
   try {
+    const { eventId } = req.query;
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
       range: "Glimpses!A2:B",
     });
-    res.json(response.data.values || []);
+    let rows = response.data.values || [];
+
+    if (eventId) {
+      rows = rows.filter((row) => (row[0] || "").trim() === eventId.trim());
+    }
+
+    res.json(rows);
   } catch (err) {
     console.log(err);
     res.status(500).json({ error: "Failed to fetch glimpses" });

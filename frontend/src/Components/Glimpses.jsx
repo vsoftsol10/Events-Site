@@ -26,13 +26,36 @@ function Glimpses() {
   }, [images, isPaused]);
 
   const fetchImages = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/glimpses`);
-      setImages(res.data.map((row) => row[1]));
-    } catch (err) {
-      console.log(err);
+  try {
+    // 1. Get all (non-archived) events
+    const eventsRes = await axios.get(`${API_URL}/events`);
+    const events = eventsRes.data || [];
+
+    // 2. Keep only published ones — status lives at index 15
+    const published = events.filter(
+      (row) => (row[15] || "").trim().toLowerCase() === "published"
+    );
+
+    if (published.length === 0) {
+      setImages([]);
+      return;
     }
-  };
+
+    // 3. Pick the most recently published/created event — createdAt is index 17
+    published.sort(
+      (a, b) => new Date(b[17] || 0).getTime() - new Date(a[17] || 0).getTime()
+    );
+    const latestEventId = published[0][0];
+
+    // 4. Fetch glimpses scoped to that event only
+    const res = await axios.get(`${API_URL}/glimpses`, {
+      params: { eventId: latestEventId },
+    });
+    setImages(res.data.map((row) => row[1]));
+  } catch (err) {
+    console.log(err);
+  }
+};
 
   const nextSlide = useCallback(() => {
     setDirection(1);
