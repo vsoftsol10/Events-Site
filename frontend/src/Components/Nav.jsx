@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import logo from "../assets/Vsoft Logo black.png";
-import leaf from "../assets/leaves.png";
 import border from "../assets/bg.jpg";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import axios from "axios";
+import { API_URL } from "../config";
+import { isRegistrationOpen } from "../utils/deadline";
 
 const NAV_LINKS = [
   { label: "Home", href: "#hero" },
@@ -15,11 +17,30 @@ const NAV_LINKS = [
 
 function Nav({ showBackButton = false }) {
   const navigate = useNavigate();
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
   const [language, setLanguage] = useState(i18n.language || "en");
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [active, setActive] = useState("#hero");
+  const [event, setEvent] = useState(null);
+  const [now, setNow] = useState(null);
+
+  useEffect(() => {
+    axios.get(`${API_URL}/events`).then(({ data }) => {
+      if (data?.length) {
+        const latest = data[data.length - 1];
+        setEvent({ deadline: latest[10], status: latest[15] });
+      }
+    }).catch((err) => console.error("Could not load event registration status:", err));
+    const initialUpdate = setTimeout(() => setNow(Date.now()), 0);
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => {
+      clearTimeout(initialUpdate);
+      clearInterval(timer);
+    };
+  }, []);
+
+  const registrationOpen = now != null && isRegistrationOpen(event, now);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -144,10 +165,11 @@ function Nav({ showBackButton = false }) {
           <motion.button
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
-            onClick={() => navigate("/register")}
-            className="hidden sm:inline-flex items-center gap-1.5 bg-[#245C1F] text-white text-sm font-semibold px-5 py-2.5 rounded-full shadow-sm hover:bg-[#1c4818] transition-colors"
+            onClick={() => registrationOpen && navigate("/register")}
+            disabled={!registrationOpen}
+            className={`hidden sm:inline-flex items-center gap-1.5 text-white text-sm font-semibold px-5 py-2.5 rounded-full shadow-sm transition-colors ${registrationOpen ? "bg-[#245C1F] hover:bg-[#1c4818]" : "bg-red-800 cursor-not-allowed"}`}
           >
-            Register
+            {registrationOpen ? t("registerNow") : t("registrationClosed")}
           </motion.button>
 
           <button
@@ -204,10 +226,11 @@ function Nav({ showBackButton = false }) {
 
               <motion.button
                 whileTap={{ scale: 0.97 }}
-                onClick={() => navigate("/register")}
-                className="mt-3 w-full bg-[#245C1F] text-white text-sm font-semibold py-3 rounded-full shadow-sm"
+                onClick={() => registrationOpen && navigate("/register")}
+                disabled={!registrationOpen}
+                className={`mt-3 w-full text-white text-sm font-semibold py-3 rounded-full shadow-sm ${registrationOpen ? "bg-[#245C1F]" : "bg-red-800 cursor-not-allowed"}`}
               >
-                Register Now
+                {registrationOpen ? t("registerNow") : t("registrationClosed")}
               </motion.button>
             </div>
           </motion.div>

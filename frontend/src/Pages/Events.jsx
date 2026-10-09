@@ -16,6 +16,7 @@ import {
   Users,
   X,
 } from "lucide-react";
+import { isRegistrationOpen } from "../utils/deadline";
 
 import { API_URL } from "../config";
 
@@ -115,21 +116,13 @@ function Events() {
       const registrationRows = normalizeRegistrationRows(registrationRes.data || []);
       setRegistrations(registrationRows);
 
-      const today = new Date();
       const updatedEvents = rows.map((ev) => {
         const newEvent = [...ev];
         const status = normalizeStatus(newEvent[15]);
-        const deadline = newEvent[10]
-  ? new Date(`${newEvent[10]}T23:59:59`)
-  : null;
+        const open = isRegistrationOpen({ status, deadline: newEvent[10] });
 
-if (
-  status === "published" &&
-  deadline &&
-  !Number.isNaN(deadline.getTime()) &&
-  deadline < today
-) {
-  newEvent[15] = "closed";
+        if (status === "published" && !open) {
+          newEvent[15] = "closed";
           axios.put(`${API_URL}/events/${newEvent[0]}/status`, { status: "closed" })
             .catch((err) => console.log("Auto-close failed:", err));
         } else {

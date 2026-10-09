@@ -6,14 +6,25 @@ import { motion } from "framer-motion";
 
 import { API_URL } from "../config";
 import ctaBg from "../assets/cta-bg.jpg"; // <-- place your handshake image here
+import { isRegistrationOpen } from "../utils/deadline";
 
 function CTA() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [event, setEvent] = useState(null);
+  const [now, setNow] = useState(null);
 
   useEffect(() => {
     fetchEvent();
+  }, []);
+
+  useEffect(() => {
+    const initialUpdate = setTimeout(() => setNow(Date.now()), 0);
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => {
+      clearTimeout(initialUpdate);
+      clearInterval(timer);
+    };
   }, []);
 
   const fetchEvent = async () => {
@@ -34,13 +45,7 @@ function CTA() {
     }
   };
 
-  const isRegistrationClosed = () => {
-    if (event?.status === "closed") return true;
-    if (event?.deadline && new Date(event.deadline) < new Date()) return true;
-    return false;
-  };
-
-  const closed = isRegistrationClosed();
+  const closed = now == null || !isRegistrationOpen(event, now);
 
   return (
     <section className="bg-[#FCFBF8] px-3 sm:px-4 md:px-6 py-8 md:py-12">
@@ -123,7 +128,7 @@ function CTA() {
                 : "bg-gradient-to-r from-[#E8C468] to-[#C9A227] text-[#0F2E1C] cursor-pointer shadow-md shadow-black/25 hover:shadow-lg hover:shadow-[#C9A227]/30"
             }`}
           >
-            {closed ? t("registrationClosed") || "Registration closed" : `${t("registertoday")} →`}
+            {closed ? t("registrationClosed") : `${t("registertoday")} →`}
           </motion.button>
         </div>
       </motion.div>

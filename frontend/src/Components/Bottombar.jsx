@@ -5,16 +5,27 @@ import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { API_URL } from "../config";
+import { isRegistrationOpen } from "../utils/deadline";
 
 function StickyRegisterBar() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [event, setEvent] = useState(null);
   const [visible, setVisible] = useState(true);
+  const [now, setNow] = useState(null);
   const lastScrollY = useRef(0);
 
   useEffect(() => {
     fetchEvent();
+  }, []);
+
+  useEffect(() => {
+    const initialUpdate = setTimeout(() => setNow(Date.now()), 0);
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => {
+      clearTimeout(initialUpdate);
+      clearInterval(timer);
+    };
   }, []);
 
   useEffect(() => {
@@ -54,13 +65,7 @@ function StickyRegisterBar() {
     }
   };
 
-  const isRegistrationClosed = () => {
-    if (event?.status === "closed") return true;
-    if (event?.deadline && new Date(event.deadline) < new Date()) return true;
-    return false;
-  };
-
-  const closed = isRegistrationClosed();
+  const closed = now == null || !isRegistrationOpen(event, now);
 
   return (
     <div className="fixed bottom-0 left-0 w-full z-50 pointer-events-none">
@@ -137,7 +142,7 @@ function StickyRegisterBar() {
                         : "bg-[#245c1f] text-white cursor-pointer hover:bg-[#1c4818]"
                     }`}
                   >
-                    {closed ? t("closed") || "Closed" : `${t("registerNow")} →`}
+                    {closed ? t("registrationClosed") : `${t("registerNow")} →`}
                   </motion.button>
 
                 </div>

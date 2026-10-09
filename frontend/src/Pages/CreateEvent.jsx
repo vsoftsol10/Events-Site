@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
 import { API_URL } from "../config";
+import { deadlineStorageValue } from "../utils/deadline";
 import { useState, useRef, useEffect } from "react";
 
 function CreateEvent() {
@@ -45,6 +46,7 @@ useEffect(() => {
     seats: "",
     district: "",
     deadline: "",
+    deadlineTime: "",
     descriptionEn: "",
     descriptionTa: "",
     registrationFee: "",
@@ -108,7 +110,7 @@ useEffect(() => {
       formData.append("venueTa", event.venueTa);
       formData.append("seats", event.seats);
       formData.append("district", event.district);
-      formData.append("deadline", event.deadline);
+      formData.append("deadline", deadlineStorageValue(event.deadline, event.deadlineTime));
       formData.append("descriptionEn", event.descriptionEn);
       formData.append("descriptionTa", event.descriptionTa);
       formData.append("registrationFee", event.registrationFee);
@@ -290,11 +292,18 @@ useEffect(() => {
 
             {/* DEADLINE */}
             <div>
-              <label className="font-medium">Registration Deadline *</label>
-              <input
+                <label className="font-medium">Registration closes at (IST) *</label>
+                <input
                 type="date"
                 value={event.deadline}
                 onChange={(e) => setEvent({ ...event, deadline: e.target.value })}
+                className="w-full h-12 mt-2 border rounded-xl px-4 py-0"
+              />
+              <input
+                type="time"
+                aria-label="Registration closing time in IST (optional; defaults to 11:59 PM)"
+                value={event.deadlineTime}
+                onChange={(e) => setEvent({ ...event, deadlineTime: e.target.value })}
                 className="w-full h-12 mt-2 border rounded-xl px-4 py-0"
               />
             </div>

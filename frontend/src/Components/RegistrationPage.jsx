@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
 import { API_URL } from "../config";
+import { isRegistrationOpen } from "../utils/deadline";
 
 const initialForm = {
   name: "",
@@ -29,9 +30,19 @@ function RegistrationPage() {
   const [paymentScreenshot, setPaymentScreenshot] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [successId, setSuccessId] = useState("");
+  const [now, setNow] = useState(null);
 
   useEffect(() => {
     fetchEvent();
+  }, []);
+
+  useEffect(() => {
+    const initialUpdate = setTimeout(() => setNow(Date.now()), 0);
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => {
+      clearTimeout(initialUpdate);
+      clearInterval(timer);
+    };
   }, []);
 
   useEffect(() => {
@@ -56,6 +67,7 @@ function RegistrationPage() {
           seats: latest[8],
           district: latest[9],
           deadline: latest[10],
+          status: latest[15],
           descriptionEn: latest[11],
           descriptionTa: latest[12],
           registrationFee: latest[18] || "",
@@ -134,6 +146,10 @@ const validateDetails = () => {
 
   const confirmRegistration = async (e) => {
     e.preventDefault();
+    if (!isRegistrationOpen(event)) {
+      setNow(Date.now());
+      return;
+    }
     const error = validatePayment();
     if (error) {
       alert(error);
@@ -161,7 +177,8 @@ const validateDetails = () => {
       setPaymentScreenshot(null);
     } catch (err) {
       console.log(err);
-      alert(err.response?.data?.error || "Registration Failed");
+      if (err.response?.data?.error === "REGISTRATION_CLOSED") setNow(Date.now());
+      alert(err.response?.data?.message || err.response?.data?.error || "Registration Failed");
     } finally {
       setSubmitting(false);
     }
@@ -183,7 +200,6 @@ const validateDetails = () => {
               <div>Time: {event?.time || "TBA"}</div>
               <div>Venue: {eventVenue}</div>
               <div>Registration Fee: Rs. {fee}</div>
-              <div>30 </div>
             </div>
 
             <div className="mt-6 md:mt-8 bg-[#fff4dd] border border-[#ffbe2a] rounded-2xl p-4 md:p-5">
@@ -206,7 +222,12 @@ const validateDetails = () => {
               ← {step === 2 ? "Back to Details" : "Back"}
             </button>
 
-            {successId ? (
+            {now == null || !isRegistrationOpen(event, now) ? (
+              <div className="bg-white rounded-3xl shadow-lg border border-[#e6dcc6] p-6 md:p-10 text-center">
+                <h1 className="text-2xl md:text-3xl font-serif text-red-800">{i18n.t("registrationClosed")}</h1>
+                <p className="mt-3 text-[#5C4033]">{i18n.t("registrationClosedMessage")}</p>
+              </div>
+            ) : successId ? (
               <div className="bg-white rounded-3xl shadow-lg border border-[#e6dcc6] p-6 md:p-10 text-center">
                 <h1 className="text-2xl md:text-3xl font-serif text-green-800">
                   Registration Successful

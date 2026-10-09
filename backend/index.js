@@ -1507,6 +1507,75 @@ const REGISTRATION_RANGE = "Registrations!A:W";
 const REGISTRATION_WRITE_COLUMNS = 23;
 const EVENT_RANGE = "Events!A:S";
 const EVENT_WRITE_COLUMNS = 19;
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+const DATE_ONLY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+const LOCAL_DEADLINE_RE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/;
+const EXPLICIT_DEADLINE_RE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,3})?)?(Z|[+-]\d{2}:?\d{2})$/i;
+
+function validDeadlineParts(year, month, day, hour = 0, minute = 0, second = 0) {
+  const value = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+  return value.getUTCFullYear() === year && value.getUTCMonth() === month - 1 &&
+    value.getUTCDate() === day && hour <= 23 && minute <= 59 && second <= 59;
+}
+
+function getDeadlineInstant(value) {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const deadline = value.trim();
+  const dateMatch = DATE_ONLY_RE.exec(deadline);
+  if (dateMatch) {
+    const [, y, m, d] = dateMatch;
+    if (!validDeadlineParts(+y, +m, +d)) return null;
+    return Date.UTC(+y, +m - 1, +d + 1) - 1000 - IST_OFFSET_MS;
+  }
+  const localMatch = LOCAL_DEADLINE_RE.exec(deadline);
+  if (localMatch) {
+    const [, y, m, d, hh, mm, ss = "00"] = localMatch;
+    if (!validDeadlineParts(+y, +m, +d, +hh, +mm, +ss)) return null;
+    return Date.UTC(+y, +m - 1, +d, +hh, +mm, +ss) - IST_OFFSET_MS;
+  }
+  const explicitMatch = EXPLICIT_DEADLINE_RE.exec(deadline);
+  if (!explicitMatch) return null;
+  const [, y, m, d, hh, mm, ss = "00", zone] = explicitMatch;
+  if (!validDeadlineParts(+y, +m, +d, +hh, +mm, +ss)) return null;
+  if (zone.toUpperCase() !== "Z") {
+    const [zoneHours, zoneMinutes] = zone.slice(1).replace(":", "").match(/.{2}/g).map(Number);
+    if (zoneHours > 23 || zoneMinutes > 59) return null;
+  }
+  const parsed = Date.parse(deadline);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function isRegistrationOpen(event, now = Date.now()) {
+  if (!event || String(event.status || "").toLowerCase() === "closed") return false;
+  const closesAt = getDeadlineInstant(event.deadline);
+  if (closesAt == null) {
+    console.warn("Registration is closed because the event deadline is missing or invalid.");
+    return false;
+  }
+  return now < closesAt;
+}
+
+function normalizeDeadline(value) {
+  if (typeof value !== "string" || !value.trim()) throw new Error("Registration deadline is required");
+  const deadline = value.trim();
+  const dateMatch = DATE_ONLY_RE.exec(deadline);
+  if (dateMatch) {
+    const [, y, m, d] = dateMatch;
+    if (!validDeadlineParts(+y, +m, +d)) throw new Error("Registration deadline is invalid");
+    return `${deadline}T23:59:59+05:30`;
+  }
+  const localMatch = LOCAL_DEADLINE_RE.exec(deadline);
+  if (localMatch) {
+    const [, y, m, d, hh, mm, ss = "00"] = localMatch;
+    if (!validDeadlineParts(+y, +m, +d, +hh, +mm, +ss)) throw new Error("Registration deadline is invalid");
+    return `${y}-${m}-${d}T${hh}:${mm}:${ss}+05:30`;
+  }
+  if (!EXPLICIT_DEADLINE_RE.test(deadline) || getDeadlineInstant(deadline) == null) {
+    throw new Error("Registration deadline must include a valid date and time zone");
+  }
+  return deadline;
+}
+
 const PAYMENT_STATUS = {
   pending: "Pending Verification",
   verified: "Verified",
@@ -1981,6 +2050,12 @@ app.put(
         status,
         registrationFee,
       } = req.body;
+      let normalizedDeadline;
+      try {
+        normalizedDeadline = normalizeDeadline(deadline);
+      } catch (deadlineError) {
+        return res.status(400).json({ error: "INVALID_DEADLINE", message: deadlineError.message });
+      }
 
       // ── Banner upload ──────────────────────────────────────────────────────
       let bannerUrl = data[rowIndex][16] || "";
@@ -2079,7 +2154,7 @@ app.put(
             venueTa,
             seats,
             district,
-            deadline,
+            normalizedDeadline,
             descriptionEn,
             descriptionTa,
             JSON.stringify(parsedSpeakersEn),   // col 13 (index 13): Speakers details_En — merged object with both EN + TA fields
@@ -2121,6 +2196,12 @@ app.post(
         status,
         registrationFee,
       } = req.body;
+      let normalizedDeadline;
+      try {
+        normalizedDeadline = normalizeDeadline(deadline);
+      } catch (deadlineError) {
+        return res.status(400).json({ error: "INVALID_DEADLINE", message: deadlineError.message });
+      }
 
       // ── Duplicate check FIRST — before any uploads ─────────────────────────
       const rows = await sheets.spreadsheets.values.get({
@@ -2224,7 +2305,7 @@ app.post(
             venueTa,
             seats,
             district,
-            deadline,
+            normalizedDeadline,
             descriptionEn,
             descriptionTa,
             JSON.stringify(parsedSpeakersEn),   // col 13 (index 13): Speakers details_En — merged object with both EN + TA fields
@@ -2302,6 +2383,25 @@ app.post("/add-event", paymentUpload.single("paymentScreenshot"), async (req, re
     if (!name || !phone || !email || !businessName || !category || !businessLocation) {
   return res.status(400).json({ error: "Missing required registration details" });
 }
+    const eventRecord = await getEventRowById(eventId);
+    const eventRow = eventRecord.row;
+    const registrationOpen = isRegistrationOpen({ status: eventRow[15], deadline: eventRow[10] });
+    if (!registrationOpen) {
+      if (String(eventRow[15] || "").trim().toLowerCase() === "published") {
+        const closedRow = [...eventRow];
+        closedRow[15] = "closed";
+        while (closedRow.length < EVENT_WRITE_COLUMNS) closedRow.push("");
+        await sheets.spreadsheets.values.update({
+          spreadsheetId,
+          range: `Events!A${eventRecord.sheetRow}:S${eventRecord.sheetRow}`,
+          valueInputOption: "RAW",
+          requestBody: { values: [closedRow.slice(0, EVENT_WRITE_COLUMNS)] },
+        });
+        cachedEvents = null;
+        lastFetchTime = 0;
+      }
+      return res.status(403).json({ error: "REGISTRATION_CLOSED", message: "Registration is closed" });
+    }
     const upiError = validateUpiReference(upiReference);
     if (upiError) {
       return res.status(400).json({ error: upiError });
@@ -2312,7 +2412,6 @@ app.post("/add-event", paymentUpload.single("paymentScreenshot"), async (req, re
 
     await assertEventSeatsAvailable(eventId);
 
-    const eventRecord = await getEventRowById(eventId).catch(() => ({ row: [] }));
     const registrationFee = eventRecord.row[18] || "";
     const registrationRows = await getAllRegistrationRows();
     assertUniquePaymentAndRegistration(registrationRows, {

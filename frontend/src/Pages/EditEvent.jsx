@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 
 import { API_URL } from "../config";
+import { deadlineInputValue, deadlineStorageValue } from "../utils/deadline";
 
 function EditEvent() {
   const { id } = useParams();
@@ -22,6 +23,7 @@ function EditEvent() {
     seats: "",
     district: "",
     deadline: "",
+    deadlineTime: "",
     descriptionEn: "",
     descriptionTa: "",
     registrationFee: "",
@@ -83,7 +85,7 @@ function EditEvent() {
       formData.append("venueTa", event.venueTa);
       formData.append("seats", event.seats);
       formData.append("district", event.district);
-      formData.append("deadline", event.deadline);
+      formData.append("deadline", deadlineStorageValue(event.deadline, event.deadlineTime));
       formData.append("descriptionEn", event.descriptionEn);
       formData.append("descriptionTa", event.descriptionTa);
       formData.append("registrationFee", event.registrationFee);
@@ -187,7 +189,8 @@ function EditEvent() {
         venueTa: selectedEvent[7] || "",
         seats: selectedEvent[8] || "",
         district: selectedEvent[9] || "",
-        deadline: selectedEvent[10] || "",
+        deadline: deadlineInputValue(selectedEvent[10] || "").slice(0, 10),
+        deadlineTime: deadlineInputValue(selectedEvent[10] || "").slice(11, 16),
         descriptionEn: selectedEvent[11] || "",
         descriptionTa: selectedEvent[12] || "",
         registrationFee: selectedEvent[18] || "",
@@ -316,11 +319,18 @@ function EditEvent() {
 
             {/* DEADLINE */}
             <div>
-              <label className="font-medium">Registration Deadline *</label>
-              <input
+                <label className="font-medium">Registration closes at (IST) *</label>
+                <input
                 type="date"
                 value={event.deadline}
                 onChange={(e) => setEvent({ ...event, deadline: e.target.value })}
+                className="w-full mt-2 border rounded-xl px-4 py-3"
+              />
+              <input
+                type="time"
+                aria-label="Registration closing time in IST (optional; defaults to 11:59 PM)"
+                value={event.deadlineTime}
+                onChange={(e) => setEvent({ ...event, deadlineTime: e.target.value })}
                 className="w-full mt-2 border rounded-xl px-4 py-3"
               />
             </div>

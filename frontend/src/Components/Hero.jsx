@@ -23,6 +23,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 
 import { API_URL } from "../config";
+import { getDeadlineInstant, isRegistrationOpen } from "../utils/deadline";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -82,19 +83,16 @@ function Hero() {
     }
   };
 
-  const isRegistrationClosed = () => {
-    if (event?.status === "closed") return true;
-    if (event?.deadline && new Date(event.deadline) < new Date()) return true;
-    return false;
-  };
-
   useEffect(() => {
-    if (!event?.deadline) return;
+    const closesAt = getDeadlineInstant(event?.deadline);
+    if (closesAt == null) return;
     const timer = setInterval(() => {
-      const now = new Date();
-      const deadline = new Date(event.deadline);
-      const difference = deadline - now;
-      if (difference <= 0) { clearInterval(timer); return; }
+      const difference = closesAt - Date.now();
+      if (difference <= 0) {
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+        clearInterval(timer);
+        return;
+      }
       setTimeLeft({
         days: Math.floor(difference / (1000 * 60 * 60 * 24)),
         hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
@@ -107,7 +105,7 @@ function Hero() {
 
   /* ---------- presentation-only derived values (no business logic) ---------- */
   const isTa = i18n.language === "ta";
-  const closed = isRegistrationClosed();
+  const closed = !isRegistrationOpen(event);
 
   const formattedDate = event?.date
     ? new Date(event.date).toLocaleDateString("en-GB", {
@@ -275,7 +273,7 @@ function Hero() {
                       }
                 }
               >
-                {closed ? "Registration Closed" : `${t("registerNow")} →`}
+                {closed ? t("registrationClosed") : `${t("registerNow")} →`}
               </motion.button>
 
               <motion.button
@@ -428,14 +426,14 @@ function Hero() {
                   {countdownBlocks.map(({ value, label }) => (
                     <div key={label} className="text-center">
                       <div className="relative h-12 md:h-14 flex items-center justify-center overflow-hidden">
-                        <AnimatePresence mode="popLayout">
+                        <AnimatePresence mode="wait" initial={false}>
                           <motion.span
                             key={value}
                             initial={{ y: 18, opacity: 0 }}
                             animate={{ y: 0, opacity: 1 }}
                             exit={{ y: -18, opacity: 0 }}
-                            transition={{ duration: 0.35, ease: "easeOut" }}
-                            className="absolute text-2xl md:text-4xl font-bold text-[#E8C468]"
+                            transition={{ duration: 0.12, ease: "easeOut" }}
+                            className="absolute w-full text-center text-2xl md:text-4xl font-bold text-[#E8C468]"
                             style={{ fontFamily: "'Space Grotesk', sans-serif" }}
                           >
                             {String(value).padStart(2, "0")}
